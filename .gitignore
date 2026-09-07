@@ -1,0 +1,9 @@
+.env
+.claude/
+.DS_Store
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+papers/*.pdf
+data/index.json
+data/name_cache.json

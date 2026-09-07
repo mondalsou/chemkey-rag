@@ -1,0 +1,526 @@
+"""ChemKeyRAG - structure-aware retrieval over a small paper corpus.
+
+Build the index first:
+
+    python build_index.py
+
+then:
+
+    streamlit run streamlit_app.py
+"""
+
+import os
+import base64
+import html
+import json
+from pathlib import Path
+import re
+import time
+
+import requests
+import streamlit as st
+from dotenv import load_dotenv
+from rdkit import Chem
+from rdkit.Chem.Draw import rdMolDraw2D
+
+import chemkey as ck
+import evidence_plots as plots
+
+load_dotenv()  # so OPENROUTER_API_KEY in .env reaches the sidebar default
+
+INDEX_PATH = "data/index.json"
+
+# label -> (SMILES, common-name query)
+EXAMPLES = {
+    "Paracetamol": ("CC(=O)Nc1ccc(O)cc1", "paracetamol"),
+    "Phenacetin": ("CCOc1ccc(NC(C)=O)cc1", "phenacetin"),
+    "Acetanilide": ("CC(=O)Nc1ccccc1", "acetanilide"),
+    "Caffeine": ("Cn1cnc2c1c(=O)n(C)c(=O)n2C", "caffeine"),
+    "Benzocaine": ("CCOC(=O)c1ccc(N)cc1", "benzocaine"),
+    "Carbamazepine (not in corpus)": ("NC(=O)N1c2ccccc2C=Cc2ccccc21", "carbamazepine"),
+}
+
+# (label, question, expected_to_be_answerable) - two the corpus supports, one it
+# does not, so the refusal behaviour is visible rather than asserted.
+PRESET_QUESTIONS = [
+    ("Cocrystals",
+     "Which coformers were used to make cocrystals, and what holds the layers together?",
+     True),
+    ("Solubility table",
+     "What are the measured solubility values in DMSO + water mixtures at "
+     "different temperatures?",
+     True),
+    ("Clinical dosing",
+     "What are the reported clinical side effects and dosing in humans?",
+     False),
+]
+
+CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+:root {--ink:#f3e8dc;--muted:#b0a1ab;--coral:#ef8874;}
+.stApp {background:radial-gradient(ellipse at 83% 14%,#321924 0,transparent 36%),#100e16;color:var(--ink);font-family:'DM Sans',sans-serif;}
+.block-container {padding-top:2rem;max-width:1500px;padding-bottom:4rem;}
+h1,h2,h3 {color:var(--ink);font-family:'Plus Jakarta Sans','DM Sans',sans-serif!important;font-weight:500!important;letter-spacing:-.035em;}
+h3 {font-size:1.35rem!important;}
+[data-testid="stHeader"] {background:#100e16d9;}
+[data-testid="stSidebar"] {background:#141119;border-right:1px solid #34252f;}
+[data-testid="stSidebar"] .block-container {padding-top:2rem;}
+[data-testid="stMetric"] {background:linear-gradient(140deg,#241923,#16131c);border:1px solid #3b2c37;border-radius:15px;padding:18px 20px;min-height:118px;}
+[data-testid="stMetricValue"] {font-family:'Plus Jakarta Sans','DM Sans',sans-serif;font-size:2.3rem;color:#efbe94;}
+[data-testid="stMetricLabel"] {color:#beadb5;font-size:.8rem;}
+[data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:16px!important;}
+[data-testid="stExpander"] {background:#19141e;border-color:#3a2a35;}
+[data-baseweb="tab-list"] {gap:28px;border-bottom:1px solid #3b2c37;margin:18px 0 24px;}
+[data-baseweb="tab"] {padding:12px 0;font-size:13px;color:#b9a9b3;}
+[data-baseweb="tab"][aria-selected="true"] {color:#f3e8dc;}
+[data-baseweb="tab-highlight"] {background:#ef8874;}
+.stButton>button,.stDownloadButton>button {background:linear-gradient(120deg,#b63f35,#82342f);color:#fff0e6;border:1px solid #c56652;border-radius:24px;padding:8px 20px;}
+.stButton>button:hover,.stDownloadButton>button:hover {border-color:#ffd1a8;color:white;background:#ad493e;}
+[data-testid="stTextInput"] input {font-size:14px;color:#f3e8dc;}
+[data-testid="stTextInput"] [data-baseweb="input"], [data-baseweb="select"]>div {background:#211a25;border-color:#45323e;border-radius:10px;}
+[data-testid="stCaptionContainer"] {color:#b0a1ab;}
+.ck-brand {font:32px 'Plus Jakarta Sans','DM Sans',sans-serif;letter-spacing:-1px;margin-bottom:8px;color:#f3e8dc;}
+.ck-brand span {color:#ef8874;}
+.ck-eyebrow {font-size:10px;font-weight:600;letter-spacing:2px;color:#dfad91;text-transform:uppercase;margin:8px 0 20px;}
+.ck-sub {color:#bdafb7;font-size:14px;line-height:1.85;max-width:540px;margin:20px 0;}
+.ck-key {font:500 13px ui-monospace,monospace;letter-spacing:1px;margin:10px 0;color:#f1c49e;}
+.ck-mol {position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,#65362f55,transparent 63%),linear-gradient(145deg,#241822,#15111c);border:1px solid #52323f;border-radius:20px;text-align:center;padding:24px 15px;box-shadow:0 18px 60px #0003;}
+.ck-mol:before {content:'';position:absolute;inset:14px;border:1px solid #cb826025;border-radius:50%;z-index:-1;transform:rotate(-25deg) scale(.84);}
+.ck-mol svg {width:100%;height:auto;max-width:370px;filter:drop-shadow(0 0 14px #ed9a6633);}
+.ck-pill {display:inline-block;padding:4px 10px;margin:3px 5px 3px 0;border:1px solid #49313d;border-radius:20px;font-size:11px;background:#2b1c27;color:#deb8ac;}
+.ck-snip {font-size:14px;line-height:1.9;color:#d0c2c8;margin:14px 0;}
+.ck-snip mark {background:#91653b;color:#fff3d9;}
+.ck-meta {font-size:10px;color:#b7a4ae;letter-spacing:.8px;}
+.ck-status {font-size:11px;color:#bdd1aa;border:1px solid #526044;background:#26302266;padding:8px 13px;border-radius:20px;display:inline-block;}
+.ck-paper {padding:16px 0;border-bottom:1px solid #342631;font-size:12px;line-height:1.8;color:#c2afb9;}
+.ck-topbar {display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3a2934;padding-bottom:18px;margin-bottom:32px;color:#c4afb9;font-size:11px;letter-spacing:1px;}
+.ck-topbar strong {color:#efd5c2;letter-spacing:2px;font-weight:500;}
+.ck-hero-title {font:clamp(30px,3.3vw,46px)/1.25 'Plus Jakarta Sans','DM Sans',sans-serif;color:#f4e9dd;letter-spacing:-1.5px;margin:12px 0 22px;}
+.ck-hero-title em {color:#ec8e7b;font-weight:500;font-style:normal;}
+.ck-hero-note {font-size:11px;color:#c2a7a8;border-left:2px solid #b86551;padding-left:12px;margin:24px 0 10px;}
+[data-testid="stChatMessage"] {background:#201923;border:1px solid #44303c;border-radius:14px;}
+.ck-name-row {display:grid;grid-template-columns:1fr auto;gap:5px 15px;margin:13px 0;font-size:13px;color:#d0c2c8;}
+.ck-name-row.selected {color:#f3c5b6;}
+.ck-name-row small {font-size:8px;letter-spacing:1px;color:#efa88e;margin-left:6px;}
+.ck-name-row b {font-weight:500;color:#efbe94;}
+.ck-name-track {grid-column:1/-1;height:3px;background:#332431;border-radius:3px;overflow:hidden;}
+.ck-name-track i {display:block;height:100%;background:#bb7466;border-radius:3px;}
+.ck-recovery {color:#c3b4bc;font-size:12px;margin:15px 0;}
+.ck-recovery strong {color:#c3d2ad;font-size:24px;margin-right:5px;}
+@media(max-width:700px) {.block-container{padding:1.4rem 1rem;}.ck-hero-title{font-size:44px;}.ck-topbar{gap:15px;font-size:9px;}[data-baseweb="tab-list"]{gap:15px;}.ck-mol{padding:15px;}}
+</style>
+"""
+
+
+# --------------------------------------------------------------------------
+# Data helpers
+# --------------------------------------------------------------------------
+
+@st.cache_data(show_spinner=False)
+def load_index(path, mtime):
+    return ck.load_index(path)
+
+
+@st.cache_resource(show_spinner=False)
+def get_resolver(online):
+    return ck.NameResolver(online=online)
+
+
+@st.cache_data(show_spinner=False)
+def resolve_name(name, online):
+    """Name -> SMILES. Lexicon and disk cache first, PubChem only if allowed."""
+    try:
+        return get_resolver(online).resolve(name)
+    except requests.RequestException:
+        return None
+
+
+def depict(smiles, size=(300, 190)):
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+    drawer = rdMolDraw2D.MolDraw2DSVG(*size)
+    drawer.drawOptions().clearBackground = False
+    drawer.drawOptions().useBWAtomPalette()
+    drawer.drawOptions().setAtomPalette({-1: (0.95, 0.83, 0.72), 7: (0.70, 0.78, 0.61), 8: (0.94, 0.49, 0.40)})
+    drawer.drawOptions().setSymbolColour((0.95, 0.83, 0.72))
+    drawer.drawOptions().bondLineWidth = 2
+    rdMolDraw2D.PrepareAndDrawMolecule(drawer, mol)
+    drawer.FinishDrawing()
+    # RDKit emits an XML prolog; it renders as stray text when inlined into HTML.
+    return re.sub(r"^<\?xml[^>]*\?>\s*", "", drawer.GetDrawingText())
+
+
+def spellings_for_block(index, block):
+    """Every name in the corpus that resolved onto this skeleton."""
+    return sorted(n for n, r in index["compounds"].items() if r["block"] == block)
+
+
+def chunks_with_block(chunks, block):
+    return {i for i, c in enumerate(chunks) if block in c["blocks"]}
+
+
+def chunks_with_text(chunks, word):
+    pattern = re.compile(r"\b" + re.escape(word) + r"\b", re.I)
+    return {i for i, c in enumerate(chunks) if pattern.search(c["text"])}
+
+
+def loose_find(text, name):
+    """Locate a name a PDF split apart: 'caffeine' matches 'ca ffeine'."""
+    return re.search(r"[\s\-]?".join(map(re.escape, name)), text, re.I)
+
+
+@st.cache_data(show_spinner=False)
+def reach_report(path, mtime, block, extra_query):
+    """Structure recall vs the best possible name-based recall."""
+    index = load_index(path, mtime)
+    chunks = index["chunks"]
+    names = spellings_for_block(index, block)
+    queries = sorted(set(names + ([extra_query] if extra_query else [])))
+
+    structure = chunks_with_block(chunks, block)
+    per_name = {q: chunks_with_text(chunks, q) for q in queries}
+    union = set().union(*per_name.values()) if per_name else set()
+    best = max(per_name.items(), key=lambda kv: len(kv[1]), default=("-", set()))
+
+    unreachable = []
+    for i in sorted(structure - union):
+        chunk = chunks[i]
+        hit = next((loose_find(chunk["text"], n) for n in names
+                    if loose_find(chunk["text"], n)), None)
+        start = max(0, hit.start() - 90) if hit else 0
+        end = min(len(chunk["text"]), hit.end() + 90) if hit else 240
+        unreachable.append({
+            "source_doc": chunk["source_doc"],
+            "page_number": chunk["page_number"],
+            "fragment": hit.group(0) if hit else None,
+            "snippet": chunk["text"][start:end],
+        })
+
+    return {
+        "names": names,
+        "counts": {n: len(s) for n, s in per_name.items()},
+        "structure": len(structure),
+        "best_name": best[0],
+        "best_count": len(best[1]),
+        "union": len(union),
+        "adds": len(structure - union),      # only the structure route finds these
+        "misses": len(union - structure),    # a name finds these, the structure does not
+        "unreachable": unreachable,
+    }
+
+
+# --------------------------------------------------------------------------
+# Rendering
+# --------------------------------------------------------------------------
+
+def render_sources(sources, empty_message):
+    if not sources:
+        st.info(empty_message)
+        return
+    for number, source in enumerate(sources, start=1):
+        with st.container(border=True):
+            st.markdown(
+                f"<div class='ck-meta'>SOURCE {number:02d} &nbsp; / &nbsp; "
+                f"{html.escape(source['source_doc'])} &nbsp; · &nbsp; PAGE {source['page_number']}"
+                f" &nbsp; · &nbsp; {html.escape(source.get('route', 'indexed').upper())}</div>",
+                unsafe_allow_html=True,
+            )
+            st.markdown("".join(f"<span class='ck-pill'>{html.escape(c)}</span>"
+                                for c in source["compounds"][:4]), unsafe_allow_html=True)
+            body = source["text"][:240] + ("…" if len(source["text"]) > 240 else "")
+            st.markdown(f"<div class='ck-snip'>{html.escape(body)}</div>", unsafe_allow_html=True)
+            with st.expander("Read full passage"):
+                if source.get("context_scope"):
+                    st.caption("Includes surrounding page text to preserve tables and definitions.")
+                st.text(source["text"])
+                if source.get("score") is not None:
+                    st.caption(f"BM25 relevance score: {source['score']} · scores are not confidence probabilities")
+
+
+@st.cache_data(show_spinner=False)
+def cached_plot(table, axis):
+    return plots.render_svg(table, axis)
+
+
+def render_plots(message, key):
+    tables = message.get("plots", [])
+    if not tables:
+        return
+    try:
+        with st.expander("Plot source data", expanded=message.get("plot_requested", False)):
+            selected = st.selectbox("Solvent system", range(len(tables)),
+                                    format_func=lambda i: tables[i]["title"], key=f"plot_system_{key}")
+            table = tables[selected]
+            axis = st.radio("Horizontal axis", ["Composition", "Temperature"], horizontal=True,
+                            key=f"plot_axis_{key}")
+            with st.spinner("Drawing source data…"):
+                svg = cached_plot(table, axis)
+            encoded = base64.b64encode(svg.encode()).decode()
+            st.markdown(f'<img alt="Solubility measurements with uncertainty bars" style="width:100%" src="data:image/svg+xml;base64,{encoded}">', unsafe_allow_html=True)
+            st.download_button("Download plot (SVG)", svg, file_name=f"{table['solvent']}-solubility.svg",
+                               mime="image/svg+xml", key=f"plot_svg_{key}")
+            st.caption(f"Measured · Table 1, page 10 · [Source {table['source']}] · bars show reported ± uncertainty. Lines connect measurements; they are not predictions. Values are mole fractions × 100.")
+            st.download_button("Download plotted data", plots.table_csv(table),
+                               file_name=f"{table['solvent']}-solubility.csv", mime="text/csv",
+                               key=f"plot_csv_{key}")
+    except Exception:
+        # Chart failure must never prevent reading an answer or its evidence.
+        st.info("The plot could not be displayed. The answer and original sources are still available.")
+
+
+def render_evidence(item):
+    """A chunk only the structure route can reach, with the broken name marked."""
+    snippet = html.escape(item["snippet"])
+    if item["fragment"]:
+        snippet = snippet.replace(html.escape(item["fragment"]), f"<mark>{html.escape(item['fragment'])}</mark>", 1)
+    with st.container(border=True):
+        st.markdown(
+            f"<span class='ck-meta'><b>{item['source_doc']}</b> &nbsp;·&nbsp; "
+            f"page {item['page_number']} &nbsp;·&nbsp; "
+            f"split by the PDF as "
+            f"<code>{item['fragment'] or 'n/a'}</code></span>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(f"<div class='ck-snip'>...{snippet}...</div>", unsafe_allow_html=True)
+
+
+# --------------------------------------------------------------------------
+
+def main():
+    st.set_page_config(page_title="ChemKey · Research workspace", page_icon="⌬", layout="wide")
+    st.markdown(CSS, unsafe_allow_html=True)
+    if not os.path.exists(INDEX_PATH):
+        st.error("No index found. Add PDFs to papers/ and run python build_index.py.")
+        return
+    mtime = os.path.getmtime(INDEX_PATH)
+    index = load_index(INDEX_PATH, mtime)
+    chunks = index["chunks"]
+    documents = sorted({c["source_doc"] for c in chunks})
+    with st.sidebar:
+        st.markdown("<div class='ck-brand'>⌬ ChemKey<span>.</span></div>", unsafe_allow_html=True)
+        st.caption("THE CHEMISTRY RESEARCH WORKSPACE")
+        st.divider()
+        st.markdown("**Your library**")
+        st.caption(f"{len(documents)} papers · {len(chunks)} indexed passages")
+        for i, name in enumerate(documents, 1):
+            st.markdown(f"<div class='ck-paper'>0{i} &nbsp; {html.escape(name.removesuffix('.pdf').replace('_', ' '))}</div>", unsafe_allow_html=True)
+        st.divider()
+        st.markdown("**Retrieval settings**")
+        top_k = st.slider("Passages per search", 2, 14, 6, help="Chat includes the surrounding page for each matched passage to keep tables intact.")
+        allow_network = st.toggle("Resolve with PubChem", value=False,
+                                  help="Allow network lookup for names missing from the local lexicon and cache.")
+        with st.expander("Answer model"):
+            typed_key = st.text_input("OpenRouter API key", type="password")
+            st.caption(f"Model: {ck.MODEL_NAME}")
+        api_key = typed_key or os.getenv("OPENROUTER_API_KEY", "")
+        st.caption("● Answer model configured" if api_key else "○ Add a key for generated answers")
+        st.divider()
+        with st.expander("Scope & limits"):
+            st.caption("Text-based evidence only. Drawings are not indexed. Connectivity matching does not distinguish stereoisomers.")
+    st.markdown("<div class='ck-topbar'><strong>CHEMKEY / RESEARCH</strong><span>LITERATURE EXPLORER</span><span class='ck-status'>● &nbsp; Local index ready</span></div>", unsafe_allow_html=True)
+    st.markdown("<h1 class='ck-hero-title'>One structure. <em>Every name.</em></h1>", unsafe_allow_html=True)
+    left, right = st.columns([2.5, 1], gap="large")
+    with left:
+        with st.container(border=True):
+            st.markdown("**Find a molecule**")
+            choice = st.selectbox("Start with an example", list(EXAMPLES))
+            default_smiles, default_name = EXAMPLES[choice]
+            mode = st.radio("Search by", ["Chemical name", "SMILES"], horizontal=True)
+            text_query = st.text_input("Chemical name", value=default_name, key=f"common_name_{choice}",
+                                       disabled=mode == "SMILES")
+            if mode == "SMILES":
+                query_smiles = st.text_input("SMILES", value=default_smiles, key=f"smiles_{choice}")
+                subject_label = "Selected structure"
+            else:
+                query_smiles = resolve_name(text_query, allow_network) if text_query.strip() else None
+                subject_label = text_query
+            if not query_smiles:
+                st.info("No structure resolved. Try another name, enable PubChem, or search by SMILES.")
+                return
+            full_key, block = ck.to_inchikey(query_smiles)
+            if not block:
+                st.error("That SMILES could not be parsed. Check the structure and try again.")
+                return
+
+    with right:
+        svg = depict(query_smiles, (370, 220))
+        if svg:
+            st.markdown(f"<div class='ck-mol'>{svg}<div class='ck-meta'>MOLECULAR CONNECTIVITY</div><div class='ck-key'>{block}</div></div>", unsafe_allow_html=True)
+        with st.expander("Structure details"):
+            st.code(query_smiles, language=None)
+            st.caption(full_key)
+    structural_ids = chunks_with_block(chunks, block)
+    literal_ids = chunks_with_text(chunks, text_query) if text_query and mode == "Chemical name" else set()
+    mentions = ck.documents_for_structure(query_smiles, index)
+    names = spellings_for_block(index, block)
+    with st.container(border=True):
+        st.markdown("### Different names. Same molecule.")
+        name_col, structure_col = st.columns([1.7, 1], gap="large")
+        with name_col:
+            st.markdown("<div class='ck-meta'>EXACT-NAME SEARCH · PASSAGES PER SPELLING</div>", unsafe_allow_html=True)
+            comparison_names = list(names)
+            if mode == "Chemical name" and not any(
+                    name.casefold() == text_query.casefold() for name in comparison_names):
+                comparison_names.append(text_query)
+            counts = [(name, len(chunks_with_text(chunks, name))) for name in comparison_names]
+            maximum = max([len(structural_ids)] + [count for _, count in counts] + [1])
+            for name, count in counts:
+                is_cas = bool(re.fullmatch(r"\d{2,7}-\d{2}-\d", name))
+                selected = mode == "Chemical name" and name.casefold() == text_query.casefold()
+                label = ("CAS " if is_cas else "") + html.escape(name)
+                st.markdown(f"<div class='ck-name-row{' selected' if selected else ''}'><span>{label}{' <small>YOUR QUERY</small>' if selected else ''}</span><b>{count}</b><div class='ck-name-track'><i style='width:{100*count/maximum:.2f}%'></i></div></div>", unsafe_allow_html=True)
+            if not counts:
+                st.caption("No names indexed for this structure.")
+        with structure_col:
+            st.metric("Structure passages", len(structural_ids))
+            st.caption(f"One connectivity key · {len(mentions)} papers · {len(names)} indexed names")
+            if mode == "Chemical name":
+                recovered = len(structural_ids - literal_ids)
+                st.markdown(f"<div class='ck-recovery'><strong>+{recovered}</strong> passages beyond this exact name</div>", unsafe_allow_html=True)
+            st.caption("Names and CAS identifiers resolve to the same structure.")
+        with st.expander("How to read this comparison"):
+            st.caption("Each name matches only that exact phrase. Structure retrieval joins indexed names by connectivity key. Counts include references; ranked results filter detected bibliographies. Name counts overlap and should not be added.")
+            st.caption("This shows the benefit over one name, not over a complete synonym list. See Retrieval insights for that comparison. Drawn-only structures are not indexed.")
+    evidence_tab, chat_tab, compare_tab, library_tab = st.tabs(["Evidence explorer", "Ask the library", "Retrieval insights", "Source library"])
+    with evidence_tab:
+        c1, c2 = st.columns([3, 2])
+        question_filter = c1.text_input("Narrow by topic", placeholder="e.g. solubility, hydrogen bonds, DMSO")
+        selected_docs = c2.multiselect("Filter papers", documents, placeholder="All papers")
+        scoped = {**index, "chunks": [c for c in chunks if not selected_docs or c["source_doc"] in selected_docs]}
+        hits, _ = ck.structure_search(query_smiles, scoped, question_filter, top_k=top_k)
+        st.caption(f"{len(hits)} ranked passages · pinned to {subject_label}")
+        st.download_button("↓ Export evidence", json.dumps({"query":subject_label,"smiles":query_smiles,"block":block,"sources":hits}, indent=2),
+                           file_name="chemkey-evidence.json", mime="application/json", disabled=not hits)
+        render_sources(hits, "No indexed passages for this structure in the selected papers.")
+    with compare_tab:
+        st.subheader("What does structure actually add?")
+        reach = reach_report(INDEX_PATH, mtime, block, text_query if mode == "Chemical name" else "")
+        c1,c2,c3 = st.columns(3)
+        c1.metric("All indexed spellings combined", reach["union"])
+        c2.metric("Only structure finds", reach["adds"])
+        c3.metric("Only spellings find", reach["misses"])
+        st.caption("Exact phrase coverage across all chunks. This is a synonym baseline, not BM25 ranking.")
+        if not reach["adds"] and structural_ids:
+            st.info("For this molecule, a complete synonym list matches or exceeds structure coverage. Structure helps you search without knowing that list.")
+        for item in reach["unreachable"]:
+            render_evidence(item)
+        st.markdown("**Names linked to this structure**")
+        st.markdown("".join(f"<span class='ck-pill'>{html.escape(n)} · {reach['counts'][n]}</span>" for n in names), unsafe_allow_html=True)
+        if mode == "Chemical name":
+            st.divider()
+            c1,c2 = st.columns(2)
+            with c1:
+                st.markdown("**Text ranking · BM25**")
+                st.caption("Token matches can include partial names; these are not exact phrase counts.")
+                render_sources(ck.bm25_search(text_query, chunks, top_k=top_k), "No matching text tokens.")
+            with c2:
+                st.markdown("**Structure ranking**")
+                results, _ = ck.structure_search(query_smiles, index, text_query, top_k=top_k)
+                render_sources(results, "No matching structure.")
+    with library_tab:
+        st.subheader("The papers behind the answers")
+
+        for doc in documents:
+            with st.container(border=True):
+                st.markdown(f"**{doc.removesuffix('.pdf').replace('_', ' ')}**")
+                dc = [c for c in chunks if c['source_doc'] == doc]
+                st.caption(f"{len(dc)} indexed passages · {len({c['page_number'] for c in dc})} pages with indexed text")
+                path = Path("papers") / Path(doc).name
+                if path.is_file():
+                    st.download_button("↓ Original PDF", path.read_bytes(), file_name=path.name, mime="application/pdf", key=f"pdf_{doc}")
+        st.info("Answers must distinguish measurements, collected literature values, and predictions. Retrieved passages may be incomplete; check the original paper before treating a list as exhaustive.")
+    with chat_tab:
+        # ---------------- chat ----------------
+        st.subheader("Ask the library")
+
+        if st.session_state.get("chat_block") != block:
+            st.session_state.chat_block = block
+            st.session_state.chat = []
+            st.session_state.pop("pending", None)
+
+        st.caption(f"About **{subject_label}** · cited answers · follow-ups supported")
+
+        buttons = st.columns(len(PRESET_QUESTIONS) + 1)
+        for column, (label, preset, answerable) in zip(buttons, PRESET_QUESTIONS):
+            hint = "Evidence availability depends on the selected molecule"
+            if column.button(label, help=f"{preset}\n\n({hint})", use_container_width=True):
+                st.session_state.pending = preset
+        if buttons[-1].button("Clear", use_container_width=True):
+            st.session_state.chat = []
+            st.session_state.pop("pending", None)
+
+        for message_number, message in enumerate(st.session_state.chat):
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+                render_plots(message, f"{block}_{message_number}")
+                if message.get("sources"):
+                    with st.expander(f"{len(message['sources'])} sources"):
+                        render_sources(message["sources"], "No sources.")
+
+        if st.session_state.chat and st.session_state.chat[-1].get("followups"):
+            st.caption("Continue exploring")
+            for number, suggestion in enumerate(st.session_state.chat[-1]["followups"]):
+                if st.button(suggestion, key=f"followup_{len(st.session_state.chat)}_{number}"):
+                    st.session_state.pending = suggestion
+
+        question = st.chat_input("Ask about solubility, coformers, or experimental conditions…") or st.session_state.pop("pending", None)
+        if not question:
+            return
+        if not api_key:
+            st.warning("Add an OpenRouter API key in the sidebar to generate the answer.")
+            return
+
+        st.session_state.chat.append({"role": "user", "content": question})
+        with st.chat_message("user"):
+            st.markdown(question)
+
+        history = [{"role": m["role"], "content": m["content"]}
+                   for m in st.session_state.chat[:-1]]
+        sources, _ = ck.conversation_search(
+            question, query_smiles, index, history=history, top_k=top_k
+        )
+        started = time.perf_counter()
+
+        with st.chat_message("assistant"):
+            try:
+                with st.spinner(f"Asking {ck.MODEL_NAME} over {len(sources)} chunks..."):
+                    answer = ck.ask_openrouter(
+                        question, sources, api_key, history=history,
+                        subject={"label": subject_label,
+                                 "block": block,
+                                 "names": spellings_for_block(index, block)},
+                    )
+            except requests.HTTPError as error:
+                st.session_state.chat.pop()
+                st.error(f"OpenRouter returned an error: {error.response.text[:400]}")
+                return
+            except requests.RequestException as error:
+                st.session_state.chat.pop()
+                st.error(f"Could not reach OpenRouter: {error}")
+                return
+
+            answer, followups = ck.split_answer_followups(answer)
+            st.markdown(answer)
+            routes = ", ".join(sorted({s["route"] for s in sources})) or "none"
+            st.caption(f"{len(sources)} chunks · routes: {routes} · "
+                       f"{int((time.perf_counter() - started) * 1000)} ms")
+            with st.expander(f"{len(sources)} sources"):
+                render_sources(sources, "No sources.")
+
+        plot_requested = bool(re.search(r"\b(plot|chart|graph|visuali[sz]e)\b", question, re.I))
+        try:
+            tables = plots.solubility_tables(sources, block)
+        except (ValueError, TypeError, KeyError):
+            tables = []
+        if plot_requested and not tables:
+            answer += "\n\nA verified numerical plot is not available for this question. The chart feature currently supports Table 1 solubility data; qualitative coformer findings remain in the cited answer."
+        st.session_state.chat.append(
+            {"role": "assistant", "content": answer, "sources": sources, "followups": followups,
+             "plots": tables, "plot_requested": plot_requested}
+        )
+        st.rerun()
+
+if __name__ == "__main__":
+    main()

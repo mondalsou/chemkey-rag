@@ -1,0 +1,22 @@
+name: chemkey-rag
+channels:
+  - conda-forge
+dependencies:
+  # Core Python
+  - python=3.11
+  - pip
+
+  # Chemistry/Cheminformatics
+  - rdkit>=2023.09
+
+  # PDF + retrieval
+  - pypdf>=5.0
+  - requests>=2.31
+  - python-dotenv>=1.0
+
+  # UI
+  - streamlit>=1.35
+
+  # Notebook
+  - jupyter>=1.0
+  - ipykernel>=6.29
