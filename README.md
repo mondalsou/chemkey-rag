@@ -170,9 +170,27 @@ can be traced and retracted rather than silently corrected.
 does not let the model assert an identifier. A generated CAS Registry Number that
 looks plausible is worse than no answer.
 
-## Licence
+## Licence and sources
 
-MIT. The papers are not redistributed — `papers/*.pdf` is gitignored.
+Code: MIT. The PDFs are not redistributed — `papers/*.pdf` is gitignored, and the
+app links to the open-access record rather than serving a copy.
+
+`data/index.public.json` is committed so the app runs from a clone with no build
+step. It contains extracted passages from the two CC BY papers only:
+
+- Muzioł, T.M.; Bronikowska, E. *Driving Forces in the Formation of Paracetamol
+  Cocrystals and Solvate with Naphthalene, Quinoline and Acridine.* Molecules
+  **2024**, 29, 4437. [PMC11434482](https://pmc.ncbi.nlm.nih.gov/articles/PMC11434482/) — CC BY 4.0
+- Cysewski, P.; Jeliński, T.; Przybyłek, M.; Nowak, W.; Olczak, M. *Solubility
+  Characteristics of Acetaminophen and Phenacetin in Binary Mixtures of Aqueous
+  Organic Solvents.* Pharmaceutics **2022**, 14, 2828.
+  [PMC9781932](https://pmc.ncbi.nlm.nih.gov/articles/PMC9781932/) — CC BY 4.0
+
+Paluch et al., *J. Chem. Phys.* **2015**, 142, 044508
+([PMC4312346](https://pmc.ncbi.nlm.nih.gov/articles/PMC4312346/)) is © AIP
+Publishing and is **not** included in the committed index. Download it into
+`papers/` and run `python build_index.py` to reproduce the full local corpus —
+the app prefers `data/index.json` when it exists.
 
 ## Research workspace
 

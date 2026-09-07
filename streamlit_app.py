@@ -28,7 +28,20 @@ import evidence_plots as plots
 
 load_dotenv()  # so OPENROUTER_API_KEY in .env reaches the sidebar default
 
-INDEX_PATH = "data/index.json"
+# The full local index (all papers, gitignored) is preferred when present. The
+# committed index covers only the CC BY papers, so a clone deploys without
+# republishing text the licence does not cover.
+PRIVATE_INDEX = "data/index.json"
+PUBLIC_INDEX = "data/index.public.json"
+INDEX_PATH = PRIVATE_INDEX if os.path.exists(PRIVATE_INDEX) else PUBLIC_INDEX
+
+# The PDFs are not redistributed - the app links to the open-access record
+# instead of serving a copy. Keys are the source_doc names stored in the index.
+PAPER_SOURCES = {
+    "A_paracetamol_cocrystals.pdf": "PMC11434482",
+    "B_acetaminophen_solubility.pdf": "PMC9781932",
+    "C_excess_solubility_simulation.pdf": "PMC4312346",
+}
 
 # label -> (SMILES, common-name query)
 EXAMPLES = {
@@ -292,7 +305,10 @@ def main():
     st.set_page_config(page_title="ChemKey · Research workspace", page_icon="⌬", layout="wide")
     st.markdown(CSS, unsafe_allow_html=True)
     if not os.path.exists(INDEX_PATH):
-        st.error("No index found. Add PDFs to papers/ and run python build_index.py.")
+        st.error(
+            f"No index at `{PRIVATE_INDEX}` or `{PUBLIC_INDEX}`. "
+            "Add PDFs to papers/ and run `python build_index.py`."
+        )
         return
     mtime = os.path.getmtime(INDEX_PATH)
     index = load_index(INDEX_PATH, mtime)
@@ -427,9 +443,16 @@ def main():
                 st.markdown(f"**{doc.removesuffix('.pdf').replace('_', ' ')}**")
                 dc = [c for c in chunks if c['source_doc'] == doc]
                 st.caption(f"{len(dc)} indexed passages · {len({c['page_number'] for c in dc})} pages with indexed text")
-                path = Path("papers") / Path(doc).name
-                if path.is_file():
-                    st.download_button("↓ Original PDF", path.read_bytes(), file_name=path.name, mime="application/pdf", key=f"pdf_{doc}")
+                accession = PAPER_SOURCES.get(doc)
+                if accession:
+                    st.markdown(
+                        f"[Open on PubMed Central &rarr;]"
+                        f"(https://pmc.ncbi.nlm.nih.gov/articles/{accession}/) "
+                        f"&nbsp;<span class='ck-meta'>{accession}</span>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.caption("No accession recorded for this file.")
         st.info("Answers must distinguish measurements, collected literature values, and predictions. Retrieved passages may be incomplete; check the original paper before treating a list as exhaustive.")
     with chat_tab:
         # ---------------- chat ----------------

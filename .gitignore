@@ -6,4 +6,5 @@ __pycache__/
 .ipynb_checkpoints/
 papers/*.pdf
 data/index.json
+!data/index.public.json
 data/name_cache.json
