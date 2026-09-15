@@ -18,7 +18,9 @@ Featured on the portfolio site at `mondalsou/mondalsou`, project card 6.
 ```bash
 conda env create -f environment.yml     # or: conda activate chemkey-rag
 streamlit run streamlit_app.py          # http://localhost:8501
-python checks/check_workspace.py        # and the other four checks
+python checks/check_workspace.py        # and the other checks under checks/
+python checks/check_image_inventory.py  # SKIP/OK if papers/*.pdf are absent
+python checks/check_table_ocr.py        # SKIP/OK without PDFs or Tesseract
 ```
 
 A clone runs immediately — `data/index.public.json` is committed. Only rebuild
@@ -72,7 +74,10 @@ streamlit_app.py    four-tab workspace
 evidence_plots.py   charts parsed from retrieved Table 1 text only, never LLM prose
 build_index.py      papers/*.pdf -> index json
 make_lexicon.py     regenerates + RDKit-verifies data/lexicon.json
-checks/             five runnable checks, no API calls, no index mutation
+scripts/inventory_pdf_images.py   phase-1 figure/table image inventory (no index writes)
+scripts/ocr_table_images.py       phase-2 image-table OCR sidecar (Tesseract optional)
+checks/             runnable checks, no API calls, no index mutation
+docs/FIGURE_TABLE_OCR.md          phases 1–2 done; phase 3 (DECIMER/MolScribe) not started
 ```
 
 App tabs: **Evidence explorer** (filters, passages, JSON export) · **Ask the
@@ -164,8 +169,14 @@ anywhere in the corpus; a refusal there is correct, not a failure.
 
 ## Known limits (deliberate)
 
-- **710 embedded images never read** (paper A alone has 692). A molecule that is
-  only drawn contributes nothing. Biggest untapped source.
+- **Embedded images are not in the default index.** Phase 1 inventories them
+  (`scripts/inventory_pdf_images.py`). Phase 2 OCRs image-only **tables** with
+  Tesseract, skipping MDPI v2 ~1601×5 rule strips and refusing below mean
+  confidence 70, when a grid cannot be recovered, or when the grid is sparse
+  (`scripts/ocr_table_images.py`, gitignored `data/table_ocr.json`). Native
+  `page.extract_text()` tables are unchanged. `--image-tables` on
+  `build_index.py` is **off by default**. Phase 3 (DECIMER/MolScribe on
+  drawings) is not started. See `docs/FIGURE_TABLE_OCR.md`.
 - One reference chunk on B p19 escapes the bibliography filter — it starts
   mid-citation. Tightening began eating body text.
 - The corpus favours common names, so text search is a genuinely strong baseline.
@@ -175,7 +186,9 @@ anywhere in the corpus; a refusal there is correct, not a failure.
 
 1. A fourth paper that names paracetamol only systematically — turns claim 2 from
    a single caffeine artifact into a corpus-side result.
-2. Structure extraction from figures (DECIMER / MolScribe) over those 710 images.
+2. Phase 3: DECIMER / MolScribe on `structure_drawing` candidates, still behind
+   an optional ingest flag. Do not add those models yet. Image-table OCR
+   (phase 2) is a sidecar only.
 3. Trained chemical NER to replace the lexical candidate pass.
 4. Deploy: **Streamlit Community Cloud** (set `OPENROUTER_API_KEY` in secrets).
    Not Vercel — serverless has no long-lived WebSocket for Streamlit, and the

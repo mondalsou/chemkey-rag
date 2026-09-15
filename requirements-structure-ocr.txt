@@ -1,0 +1,10 @@
+# Optional, heavyweight local OCSR environment.
+#
+# Install this separately from the Streamlit/runtime environment. DECIMER model
+# weights are downloaded on first use and remain in the local model cache.
+# No PDF image or recognized structure is sent to an external service.
+
+decimer>=2.8,<3
+decimer-segmentation>=1.5,<2
+PyMuPDF>=1.24
+

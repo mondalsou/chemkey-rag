@@ -70,58 +70,115 @@ PRESET_QUESTIONS = [
 
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-:root {--ink:#f3e8dc;--muted:#b0a1ab;--coral:#ef8874;}
-.stApp {background:radial-gradient(ellipse at 83% 14%,#321924 0,transparent 36%),#100e16;color:var(--ink);font-family:'DM Sans',sans-serif;}
-.block-container {padding-top:2rem;max-width:1500px;padding-bottom:4rem;}
-h1,h2,h3 {color:var(--ink);font-family:'Plus Jakarta Sans','DM Sans',sans-serif!important;font-weight:500!important;letter-spacing:-.035em;}
-h3 {font-size:1.35rem!important;}
-[data-testid="stHeader"] {background:#100e16d9;}
-[data-testid="stSidebar"] {background:#141119;border-right:1px solid #34252f;}
-[data-testid="stSidebar"] .block-container {padding-top:2rem;}
-[data-testid="stMetric"] {background:linear-gradient(140deg,#241923,#16131c);border:1px solid #3b2c37;border-radius:15px;padding:18px 20px;min-height:118px;}
-[data-testid="stMetricValue"] {font-family:'Plus Jakarta Sans','DM Sans',sans-serif;font-size:2.3rem;color:#efbe94;}
-[data-testid="stMetricLabel"] {color:#beadb5;font-size:.8rem;}
-[data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:16px!important;}
-[data-testid="stExpander"] {background:#19141e;border-color:#3a2a35;}
-[data-baseweb="tab-list"] {gap:28px;border-bottom:1px solid #3b2c37;margin:18px 0 24px;}
-[data-baseweb="tab"] {padding:12px 0;font-size:13px;color:#b9a9b3;}
-[data-baseweb="tab"][aria-selected="true"] {color:#f3e8dc;}
-[data-baseweb="tab-highlight"] {background:#ef8874;}
-.stButton>button,.stDownloadButton>button {background:linear-gradient(120deg,#b63f35,#82342f);color:#fff0e6;border:1px solid #c56652;border-radius:24px;padding:8px 20px;}
-.stButton>button:hover,.stDownloadButton>button:hover {border-color:#ffd1a8;color:white;background:#ad493e;}
-[data-testid="stTextInput"] input {font-size:14px;color:#f3e8dc;}
-[data-testid="stTextInput"] [data-baseweb="input"], [data-baseweb="select"]>div {background:#211a25;border-color:#45323e;border-radius:10px;}
-[data-testid="stCaptionContainer"] {color:#b0a1ab;}
-.ck-brand {font:32px 'Plus Jakarta Sans','DM Sans',sans-serif;letter-spacing:-1px;margin-bottom:8px;color:#f3e8dc;}
-.ck-brand span {color:#ef8874;}
-.ck-eyebrow {font-size:10px;font-weight:600;letter-spacing:2px;color:#dfad91;text-transform:uppercase;margin:8px 0 20px;}
-.ck-sub {color:#bdafb7;font-size:14px;line-height:1.85;max-width:540px;margin:20px 0;}
-.ck-key {font:500 13px ui-monospace,monospace;letter-spacing:1px;margin:10px 0;color:#f1c49e;}
-.ck-mol {position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,#65362f55,transparent 63%),linear-gradient(145deg,#241822,#15111c);border:1px solid #52323f;border-radius:20px;text-align:center;padding:24px 15px;box-shadow:0 18px 60px #0003;}
-.ck-mol:before {content:'';position:absolute;inset:14px;border:1px solid #cb826025;border-radius:50%;z-index:-1;transform:rotate(-25deg) scale(.84);}
-.ck-mol svg {width:100%;height:auto;max-width:370px;filter:drop-shadow(0 0 14px #ed9a6633);}
-.ck-pill {display:inline-block;padding:4px 10px;margin:3px 5px 3px 0;border:1px solid #49313d;border-radius:20px;font-size:11px;background:#2b1c27;color:#deb8ac;}
-.ck-snip {font-size:14px;line-height:1.9;color:#d0c2c8;margin:14px 0;}
-.ck-snip mark {background:#91653b;color:#fff3d9;}
-.ck-meta {font-size:10px;color:#b7a4ae;letter-spacing:.8px;}
-.ck-status {font-size:11px;color:#bdd1aa;border:1px solid #526044;background:#26302266;padding:8px 13px;border-radius:20px;display:inline-block;}
-.ck-paper {padding:16px 0;border-bottom:1px solid #342631;font-size:12px;line-height:1.8;color:#c2afb9;}
-.ck-topbar {display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3a2934;padding-bottom:18px;margin-bottom:32px;color:#c4afb9;font-size:11px;letter-spacing:1px;}
-.ck-topbar strong {color:#efd5c2;letter-spacing:2px;font-weight:500;}
-.ck-hero-title {font:clamp(30px,3.3vw,46px)/1.25 'Plus Jakarta Sans','DM Sans',sans-serif;color:#f4e9dd;letter-spacing:-1.5px;margin:12px 0 22px;}
-.ck-hero-title em {color:#ec8e7b;font-weight:500;font-style:normal;}
-.ck-hero-note {font-size:11px;color:#c2a7a8;border-left:2px solid #b86551;padding-left:12px;margin:24px 0 10px;}
-[data-testid="stChatMessage"] {background:#201923;border:1px solid #44303c;border-radius:14px;}
-.ck-name-row {display:grid;grid-template-columns:1fr auto;gap:5px 15px;margin:13px 0;font-size:13px;color:#d0c2c8;}
-.ck-name-row.selected {color:#f3c5b6;}
-.ck-name-row small {font-size:8px;letter-spacing:1px;color:#efa88e;margin-left:6px;}
-.ck-name-row b {font-weight:500;color:#efbe94;}
-.ck-name-track {grid-column:1/-1;height:3px;background:#332431;border-radius:3px;overflow:hidden;}
-.ck-name-track i {display:block;height:100%;background:#bb7466;border-radius:3px;}
-.ck-recovery {color:#c3b4bc;font-size:12px;margin:15px 0;}
-.ck-recovery strong {color:#c3d2ad;font-size:24px;margin-right:5px;}
-@media(max-width:700px) {.block-container{padding:1.4rem 1rem;}.ck-hero-title{font-size:44px;}.ck-topbar{gap:15px;font-size:9px;}[data-baseweb="tab-list"]{gap:15px;}.ck-mol{padding:15px;}}
+/* Chemistry research workspace: readable type and high-contrast evidence. */
+:root {
+  --paper:#f3f6fa; --sunken:#eaf0f5; --surface:#ffffff;
+  --line:#cbd7e2; --line-soft:#e0e7ef;
+  --ink:#152b40; --body:#30475c; --muted:#506579;
+  --accent:#007f79; --accent-deep:#006660; --accent-tint:#def4ef;
+  --shadow-1:0 4px 20px rgba(21,43,64,.045);
+  --r-sm:6px; --r-md:10px; --r-lg:16px;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --serif:var(--sans);
+  --mono: 'SFMono-Regular', Consolas, monospace;
+}
+.stApp {background:var(--paper);color:var(--body);font-family:var(--sans);font-feature-settings:'tnum';}
+.block-container {padding:40px 40px 72px;max-width:1440px;}
+[data-testid="stHeader"] {background:var(--paper);}
+h1,h2,h3 {color:var(--ink);font-family:var(--sans)!important;font-weight:650!important;}
+h2 {font-size:30px!important;line-height:1.25;letter-spacing:-.6px;}
+h3 {font-size:24px!important;line-height:1.35;letter-spacing:-.3px;}
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li {font-size:18px;line-height:1.65;}
+[data-testid="stWidgetLabel"] p {font-size:16px;font-weight:600;color:var(--ink);}
+[data-testid="stCaptionContainer"] p {font-size:15px;line-height:1.55;color:var(--muted);}
+[data-testid="stVerticalBlock"] {gap:18px;}
+[data-testid="stElementContainer"]:empty {display:none;}
+[data-testid="stVerticalBlockBorderWrapper"]>div,
+[data-testid="stLayoutWrapper"]>[data-testid="stVerticalBlock"] {
+  background:var(--surface);border-color:var(--line-soft)!important;
+  border-radius:var(--r-lg)!important;padding:24px;box-shadow:var(--shadow-1);
+}
+[data-testid="stMetric"] {background:var(--surface);border:1px solid var(--line-soft);border-top:3px solid var(--accent);border-radius:12px;padding:22px;min-height:136px;}
+[data-testid="stMetricValue"] {font:650 48px/1.15 var(--sans);color:var(--ink);letter-spacing:-1.5px;}
+[data-testid="stMetricValue"] [data-testid="stMarkdownContainer"] p {font:650 48px/1.15 var(--sans);color:var(--ink);letter-spacing:-1.5px;}
+[data-testid="stMetricLabel"] p {font-size:16px!important;color:var(--muted);}
+[data-testid="stMetricLabel"],[data-testid="stMetricLabel"] p {height:auto;white-space:normal;overflow:visible;text-overflow:clip;}
+[data-testid="stExpander"] details {background:#f8fafc;border:1px solid var(--line-soft);border-radius:10px;}
+[data-testid="stExpander"] summary p {font-size:16px;font-weight:500;}
+[data-testid="stChatMessage"] {background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-lg);padding:24px;}
+[data-testid="stSidebar"] {background:#e8eef5;border-right:1px solid var(--line);}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {font-size:16px;}
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {font-size:14px;line-height:1.6;}
+[data-testid="stSidebar"] [data-testid="stExpander"] details {background:transparent;}
+[data-testid="stSidebar"] hr {margin:16px 0;border-color:var(--line);}
+/* Full-size tabs remain horizontally scrollable on smaller screens. */
+[data-baseweb="tab-list"] {gap:6px;margin:26px 0 24px;padding:6px;background:#e5ecf3;border-radius:12px;overflow-x:auto;}
+[data-baseweb="tab"] {padding:12px 17px;border-radius:8px;color:var(--body);height:auto;white-space:nowrap;}
+[data-baseweb="tab"] p {font-size:16px!important;font-weight:600;}
+[data-baseweb="tab"][aria-selected="true"] {background:var(--surface);color:var(--accent-deep);box-shadow:0 2px 5px #152b4010;}
+[data-baseweb="tab-highlight"],[data-baseweb="tab-border"] {display:none;}
+.stButton>button,.stDownloadButton>button {min-height:46px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px 20px;}
+.stButton>button p,.stDownloadButton>button p {font-size:16px;font-weight:600;}
+.stButton>button:hover {border-color:var(--accent);color:var(--accent-deep);background:var(--accent-tint);}
+.stDownloadButton>button,[data-testid="stBaseButton-primary"] {background:var(--accent)!important;color:white!important;border-color:var(--accent)!important;}
+.stDownloadButton>button:hover,[data-testid="stBaseButton-primary"]:hover {background:var(--accent-deep)!important;}
+button:focus-visible,input:focus-visible {outline:3px solid #008b8280!important;outline-offset:3px;}
+[data-testid="stTextInput"] input,[data-baseweb="select"] {font-size:18px;color:var(--ink);}
+[data-testid="stTextInput"] [data-baseweb="input"],[data-baseweb="select"]>div {background:var(--surface);border-color:var(--line);border-radius:9px;min-height:48px;}
+[data-testid="stRadio"] p,[data-testid="stToggle"] p {font-size:16px;}
+.ck-brand {font:700 30px var(--sans);letter-spacing:-1px;margin:0 0 8px;color:var(--ink);}
+.ck-brand span {color:var(--accent);font-size:19px;vertical-align:8px;}
+.ck-topbar {display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;padding-bottom:20px;margin-bottom:26px;border-bottom:1px solid var(--line);font-size:13px;letter-spacing:1px;color:var(--muted);}
+.ck-topbar strong {color:var(--accent-deep);font-weight:700;}
+.ck-status {display:inline-block;padding:8px 12px;background:var(--accent-tint);border:1px solid #b9ded5;border-radius:7px;color:var(--accent-deep);font-size:13px;letter-spacing:0;}
+.ck-hero-title {font:650 clamp(36px,4vw,52px)/1.13 var(--sans);letter-spacing:-1.8px;margin:0 0 12px;color:var(--ink);}
+.ck-hero-title em {color:var(--accent);font-style:normal;}
+.ck-sub {font-size:18px;line-height:1.6;color:var(--muted);margin:0 0 28px;max-width:76ch;}
+.ck-eyebrow,.ck-hero-note {font-size:15px;color:var(--muted);}
+.ck-mol {position:relative;background:white;border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:var(--r-lg);box-shadow:var(--shadow-1);text-align:center;padding:20px 16px;}
+.ck-mol svg {width:100%;height:auto;max-width:440px;min-height:200px;}
+[data-testid="stMarkdownContainer"] svg {max-width:100%;height:auto;}
+.ck-key {display:inline-block;max-width:100%;overflow-wrap:anywhere;background:var(--sunken);padding:8px 12px;border-radius:6px;font:500 15px/1.4 var(--mono);color:var(--ink);margin:12px 0 4px;}
+.ck-pill {display:inline-block;padding:5px 11px;margin:4px 5px 4px 0;border:1px solid #cce0de;border-radius:6px;font-size:14px;background:#edf7f5;color:#245a56;}
+.ck-snip {font-size:18px;line-height:1.75;color:var(--body);margin:16px 0;max-width:85ch;}
+.ck-snip mark {background:var(--accent-tint);color:var(--ink);border-radius:3px;padding:0 3px;}
+.ck-meta {font-size:14px;line-height:1.6;color:var(--muted);letter-spacing:.25px;overflow-wrap:anywhere;}
+.ck-paper {padding:13px 0;border-bottom:1px solid var(--line);font-size:15px;line-height:1.6;color:var(--body);overflow-wrap:anywhere;}
+.ck-name-row {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 16px;margin:14px 0;font-size:17px;color:var(--body);overflow-wrap:anywhere;}
+.ck-name-row.selected {color:var(--accent-deep);}
+.ck-name-row small {font-size:11px;letter-spacing:.6px;color:var(--accent-deep);background:var(--accent-tint);padding:3px 6px;border-radius:4px;margin-left:7px;}
+.ck-name-row b {font-weight:650;color:var(--ink);}
+.ck-name-track {grid-column:1/-1;height:6px;background:var(--sunken);border-radius:4px;overflow:hidden;}
+.ck-name-track i {display:block;height:100%;background:#92a9bf;border-radius:4px;}
+.ck-name-row.selected .ck-name-track i {background:var(--accent);}
+.ck-recovery {font-size:16px;line-height:1.6;color:var(--muted);margin:16px 0;}
+.ck-recovery strong {font:650 32px/1 var(--sans);color:var(--accent-deep);margin-right:7px;}
+.ck-grid {overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px;}
+.ck-grid table {border-collapse:collapse;font:400 16px/1.6 var(--sans);color:var(--body);width:100%;background:white;}
+.ck-grid th,.ck-grid td {border:1px solid var(--line-soft);padding:12px 16px;text-align:left;vertical-align:top;}
+.ck-grid th {color:var(--ink);font-weight:650;background:#eaf1f7;}
+.ck-grid tr:nth-child(even) td {background:#f7fafc;}
+.ck-grid em {color:var(--muted);}
+[data-testid="stImage"] img {max-height:520px;max-width:100%;object-fit:contain;border-radius:10px;border:1px solid var(--line-soft);background:white;}
+[data-testid="stAlert"] {border-radius:10px;}
+[data-testid="stCode"],pre {background:var(--sunken)!important;border-radius:8px;}
+[data-testid="stCode"] code,pre code {font:400 15px/1.6 var(--mono)!important;color:var(--ink)!important;}
+[data-testid="stText"] {font-size:16px;line-height:1.7;}
+@media(max-width:1100px) {
+  .block-container {padding-left:24px;padding-right:24px;}
+  [data-baseweb="tab"] {padding:12px;}
+  .ck-topbar>span:not(.ck-status) {display:none;}
+}
+@media(max-width:700px) {
+  .block-container {padding:28px 16px 48px;}
+  .ck-hero-title {font-size:36px;letter-spacing:-1px;}
+  .ck-topbar {font-size:12px;}
+  [data-testid="stHorizontalBlock"] {flex-wrap:wrap;}
+  [data-testid="stHorizontalBlock"]>[data-testid="stColumn"] {width:100%!important;flex:1 1 100%!important;min-width:0!important;}
+  .ck-mol svg {max-height:240px;}
+  .ck-name-row {font-size:16px;}
+}
 </style>
 """
 
@@ -156,18 +213,29 @@ def depict(smiles, size=(300, 190)):
     drawer = rdMolDraw2D.MolDraw2DSVG(*size)
     drawer.drawOptions().clearBackground = False
     drawer.drawOptions().useBWAtomPalette()
-    drawer.drawOptions().setAtomPalette({-1: (0.95, 0.83, 0.72), 7: (0.70, 0.78, 0.61), 8: (0.94, 0.49, 0.40)})
-    drawer.drawOptions().setSymbolColour((0.95, 0.83, 0.72))
+    # Slate-teal ink with the page's magenta on O, so a molecule reads as part
+    # of the page rather than a pasted-in image.
+    # Monochrome, the way a structure is set in a journal. The accent is
+    # reserved for the three places it carries meaning; a molecule is not one.
+    drawer.drawOptions().setAtomPalette({-1: (0.086, 0.196, 0.239)})
+    drawer.drawOptions().setSymbolColour((0.086, 0.196, 0.239))
     drawer.drawOptions().bondLineWidth = 2
     rdMolDraw2D.PrepareAndDrawMolecule(drawer, mol)
     drawer.FinishDrawing()
     # RDKit emits an XML prolog; it renders as stray text when inlined into HTML.
-    return re.sub(r"^<\?xml[^>]*\?>\s*", "", drawer.GetDrawingText())
+    svg = re.sub(r"^<\?xml[^>]*\?>\s*", "", drawer.GetDrawingText())
+    # ...and a multi-line, indented body, which st.markdown parses as a code
+    # block unless it is wrapped in a block-level tag. One line is safe anywhere.
+    return re.sub(r"\s*\n\s*", " ", svg).strip()
 
 
 def spellings_for_block(index, block):
     """Every name in the corpus that resolved onto this skeleton."""
     return sorted(n for n, r in index["compounds"].items() if r["block"] == block)
+
+
+def image_structures_for_block(index, block):
+    return ck.image_structures_for_block(index, block)
 
 
 def chunks_with_block(chunks, block):
@@ -299,6 +367,151 @@ def render_evidence(item):
         st.markdown(f"<div class='ck-snip'>...{snippet}...</div>", unsafe_allow_html=True)
 
 
+def render_image_structures(records):
+    """Show source crop beside the connectivity reconstructed by OCSR."""
+    if not records:
+        st.info("No accepted image structure matches the selected molecule.")
+        return
+    for record in records:
+        with st.container(border=True):
+            st.markdown(
+                f"<div class='ck-meta'>{html.escape(record['source_doc'])} &nbsp;·&nbsp; "
+                f"PAGE {record['page_number']} &nbsp;·&nbsp; "
+                f"{html.escape(record.get('source_kind', 'image')).upper()} &nbsp;·&nbsp; "
+                f"{html.escape(record.get('recognizer', 'OCSR'))}</div>",
+                unsafe_allow_html=True,
+            )
+            source_col, reconstructed_col = st.columns(2, gap="large")
+            with source_col:
+                st.markdown("**Source crop**")
+                image_path = record.get("image_path")
+                if image_path and Path(image_path).exists():
+                    st.image(image_path, use_container_width=True)
+                else:
+                    st.caption("The local source crop is not available in this deployment.")
+            with reconstructed_col:
+                st.markdown("**Machine-read connectivity**")
+                svg = depict(record["smiles"], (360, 220))
+                if svg:
+                    st.markdown(svg, unsafe_allow_html=True)
+                st.code(record["smiles"], language=None)
+            confidence = record.get("confidence")
+            confidence_text = (
+                f" · model confidence {confidence:.3f}" if isinstance(confidence, (int, float))
+                else ""
+            )
+            st.caption(
+                f"RDKit-valid · InChIKey {record['inchikey']}{confidence_text}. "
+                "Compare the reconstruction with the crop; validity does not prove recognition accuracy."
+            )
+
+
+def render_ocr_candidates(records, limit=24):
+    """Show local crop evidence for accepted and refused OCSR candidates."""
+    if not records:
+        st.info("No structure-image candidates were retained in this index.")
+        return
+    shown = records[:limit]
+    for record in shown:
+        with st.container(border=True):
+            st.markdown(
+                f"<div class='ck-meta'>{html.escape(record.get('source_doc', 'unknown source'))} "
+                f"&nbsp;·&nbsp; PAGE {record.get('page_number', '?')} &nbsp;·&nbsp; "
+                f"{html.escape(record.get('source_kind', 'image')).upper()}</div>",
+                unsafe_allow_html=True,
+            )
+            image_path = record.get("image_path")
+            if record.get("status") == "accepted":
+                source_col, reconstructed_col = st.columns(2, gap="large")
+                with source_col:
+                    st.markdown("**Retained source crop**")
+                    if image_path and Path(image_path).exists():
+                        st.image(image_path, use_container_width=True)
+                    else:
+                        st.caption("The local source crop is not available in this deployment.")
+                with reconstructed_col:
+                    st.markdown("**Recognised connectivity**")
+                    svg = depict(record.get("smiles", ""), (360, 220))
+                    if svg:
+                        st.markdown(svg, unsafe_allow_html=True)
+                st.success("Accepted: RDKit parsed the predicted structure.")
+                st.code(record.get("smiles", ""), language=None)
+            else:
+                if image_path and Path(image_path).exists():
+                    st.image(image_path, caption="Retained source crop", use_container_width=True)
+                else:
+                    st.caption("The local source crop is not available in this deployment.")
+                reason = record.get("reason", "not accepted")
+                st.warning(f"Refused: {reason}. This crop is not searchable.")
+                if record.get("predicted_smiles"):
+                    st.code(record["predicted_smiles"], language=None)
+    if len(records) > len(shown):
+        st.caption(f"Showing {len(shown)} of {len(records)} retained candidates.")
+
+
+def render_recovered_grid(cells, spanning_rows=None):
+    """Show a recovered grid as-is. Empty cells stay visibly empty."""
+    spanning = set(spanning_rows or [])
+    rows = []
+    for number, row in enumerate(cells or []):
+        # No header row is assumed: OCR cannot tell a heading from a value.
+        if number in spanning:
+            body = (
+                f"<td colspan='{len(row)}'><em>{html.escape(row[0])}</em></td>"
+            )
+        else:
+            body = "".join(f"<td>{html.escape(value)}</td>" for value in row)
+        rows.append(f"<tr>{body}</tr>")
+    st.markdown(
+        "<div class='ck-grid'><table>" + "".join(rows) + "</table></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def render_table_candidates(records, limit=12):
+    """Show crop evidence for every raster the table OCR actually attempted."""
+    if not records:
+        st.info("No image-only tables were attempted in this index.")
+        return
+    shown = records[:limit]
+    for record in shown:
+        with st.container(border=True):
+            st.markdown(
+                f"<div class='ck-meta'>{html.escape(record.get('filename', 'unknown source'))} "
+                f"&nbsp;·&nbsp; PAGE {record.get('page', '?')} &nbsp;·&nbsp; "
+                f"{record.get('width', '?')}×{record.get('height', '?')} PX</div>",
+                unsafe_allow_html=True,
+            )
+            image_path = record.get("image_path")
+            if image_path and Path(image_path).exists():
+                st.image(image_path, caption="Retained source raster", use_container_width=True)
+            else:
+                st.caption("The local source raster is not available in this deployment.")
+            confidence = record.get("mean_confidence")
+            if record.get("status") == "accepted":
+                st.success(
+                    f"Accepted: {record.get('n_rows')}×{record.get('n_cols')} grid at "
+                    f"{confidence:.1f} mean word confidence."
+                )
+                render_recovered_grid(record.get("cells"), record.get("spanning_rows"))
+                spanning_share = record.get("spanning_fraction") or 0.0
+                st.caption(
+                    "Machine-read cells, italic rows span the table. "
+                    f"Column edges voted at x = {record.get('column_boundaries')}; "
+                    f"{spanning_share:.0%} of rows spanned and were kept whole. "
+                    "Check this crop before quoting a number."
+                )
+            else:
+                reason = record.get("reason", "not accepted")
+                seen = f" at {confidence:.1f} mean confidence" if confidence else ""
+                st.warning(f"Refused: {reason}{seen}. No cells are indexed.")
+            if record.get("raw_text"):
+                with st.expander("Raw OCR text, before any layout recovery"):
+                    st.code(record["raw_text"], language=None)
+    if len(records) > len(shown):
+        st.caption(f"Showing {len(shown)} of {len(records)} attempted rasters.")
+
+
 # --------------------------------------------------------------------------
 
 def main():
@@ -315,7 +528,7 @@ def main():
     chunks = index["chunks"]
     documents = sorted({c["source_doc"] for c in chunks})
     with st.sidebar:
-        st.markdown("<div class='ck-brand'>⌬ ChemKey<span>.</span></div>", unsafe_allow_html=True)
+        st.markdown("<div class='ck-brand'>⌬ ChemKey<span>&#10022;</span></div>", unsafe_allow_html=True)
         st.caption("THE CHEMISTRY RESEARCH WORKSPACE")
         st.divider()
         st.markdown("**Your library**")
@@ -334,12 +547,16 @@ def main():
         st.caption("● Answer model configured" if api_key else "○ Add a key for generated answers")
         st.divider()
         with st.expander("Scope & limits"):
-            st.caption("Text-based evidence only. Drawings are not indexed. Connectivity matching does not distinguish stereoisomers.")
+            if index.get("image_structures"):
+                st.caption("Text plus RDKit-validated image structures. Every accepted OCSR result keeps its source crop for review. Connectivity matching does not distinguish stereoisomers.")
+            else:
+                st.caption("No image structures in this index. Run build_index.py --structure-images to add reviewed OCSR evidence. Connectivity matching does not distinguish stereoisomers.")
     st.markdown("<div class='ck-topbar'><strong>CHEMKEY / RESEARCH</strong><span>LITERATURE EXPLORER</span><span class='ck-status'>● &nbsp; Local index ready</span></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='ck-hero-title'>One structure. <em>Every name.</em></h1>", unsafe_allow_html=True)
-    left, right = st.columns([2.5, 1], gap="large")
+    st.markdown("<p class='ck-sub'>Explore chemical literature through molecular structures, names, and image evidence.</p>", unsafe_allow_html=True)
+    left, right = st.columns([1.7, 1], gap="large")
     with left:
-        with st.container(border=True):
+        with st.container(border=True, key="ck-raised"):
             st.markdown("**Find a molecule**")
             choice = st.selectbox("Start with an example", list(EXAMPLES))
             default_smiles, default_name = EXAMPLES[choice]
@@ -398,8 +615,8 @@ def main():
             st.caption("Names and CAS identifiers resolve to the same structure.")
         with st.expander("How to read this comparison"):
             st.caption("Each name matches only that exact phrase. Structure retrieval joins indexed names by connectivity key. Counts include references; ranked results filter detected bibliographies. Name counts overlap and should not be added.")
-            st.caption("This shows the benefit over one name, not over a complete synonym list. See Retrieval insights for that comparison. Drawn-only structures are not indexed.")
-    evidence_tab, chat_tab, compare_tab, library_tab = st.tabs(["Evidence explorer", "Ask the library", "Retrieval insights", "Source library"])
+            st.caption("This shows the benefit over one name, not over a complete synonym list. See Retrieval insights for that comparison. Accepted image structures are shown separately with their original crops.")
+    evidence_tab, image_tab, table_tab, chat_tab, compare_tab, library_tab = st.tabs(["Evidence explorer", "Image structures", "Image tables", "Ask the library", "Retrieval insights", "Source library"])
     with evidence_tab:
         c1, c2 = st.columns([3, 2])
         question_filter = c1.text_input("Narrow by topic", placeholder="e.g. solubility, hydrogen bonds, DMSO")
@@ -410,6 +627,48 @@ def main():
         st.download_button("↓ Export evidence", json.dumps({"query":subject_label,"smiles":query_smiles,"block":block,"sources":hits}, indent=2),
                            file_name="chemkey-evidence.json", mime="application/json", disabled=not hits)
         render_sources(hits, "No indexed passages for this structure in the selected papers.")
+    with image_tab:
+        st.subheader("Structures captured from figures and tables")
+        report = index.get("structure_ocr") or {}
+        counts = report.get("counts") or {}
+        accepted_records = index.get("image_structures") or []
+        candidates = index.get("structure_ocr_candidates") or accepted_records
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Candidate crops", counts.get("crops", 0))
+        m2.metric("RDKit-valid", counts.get("accepted", len(accepted_records)))
+        m3.metric("Match selected molecule", len(image_structures_for_block(index, block)))
+        if report:
+            st.caption(
+                f"{report.get('segmenter', 'segmenter')} → "
+                f"{report.get('recognizer', 'recognizer')} → RDKit → InChIKey. "
+                "Invalid predictions are refused, not indexed."
+            )
+        else:
+            st.caption("This index was built without the optional structure-image pipeline.")
+        st.markdown("**Retained crop review**")
+        render_ocr_candidates(candidates)
+    with table_tab:
+        st.subheader("Tables read out of image-only pages")
+        table_report = index.get("table_ocr") or {}
+        table_counts = table_report.get("counts") or {}
+        accepted_tables = index.get("image_tables") or []
+        table_candidates = index.get("table_ocr_candidates") or accepted_tables
+        table_chunks = [c for c in chunks if c.get("extraction_method") == "table_ocr"]
+        t1, t2, t3 = st.columns(3)
+        t1.metric("Rasters OCR'd", table_counts.get("ocr_attempted", len(table_candidates)))
+        t2.metric("Grids accepted", table_counts.get("accepted", len(accepted_tables)))
+        t3.metric("Searchable passages added", len(table_chunks))
+        if table_report:
+            st.caption(
+                "Tesseract word boxes → column edges voted per row → grid. "
+                f"Mean word confidence below {table_report.get('confidence_threshold')} "
+                "is refused, and so is a grid that cannot be recovered. "
+                "Cell values are never invented."
+            )
+        else:
+            st.caption("This index was built without the optional image-table pipeline.")
+        st.markdown("**Attempted raster review**")
+        render_table_candidates(table_candidates)
     with compare_tab:
         st.subheader("What does structure actually add?")
         reach = reach_report(INDEX_PATH, mtime, block, text_query if mode == "Chemical name" else "")

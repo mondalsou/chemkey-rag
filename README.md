@@ -93,7 +93,7 @@ close enough — you probably only need `pypdf`:
 
 ```bash
 conda activate <your-rdkit-env>
-python -c "import rdkit, streamlit, pypdf, requests, dotenv" || pip install -r requirements.txt
+python -c "import rdkit, streamlit, pypdf, PIL, requests, dotenv" || pip install -r requirements.txt
 ```
 
 **Or make a dedicated one:**
@@ -108,6 +108,7 @@ Download the three papers listed in [`papers/PAPERS.md`](papers/PAPERS.md) into
 
 ```bash
 python build_index.py --offline     # lexicon only, no network
+python build_index.py --offline --structure-images  # optional local OCSR
 streamlit run streamlit_app.py
 ```
 
@@ -137,6 +138,10 @@ chemkey-rag/
 ├── evidence_plots.py            # verified table parsing and plot rendering
 ├── ChemKey_Research_Demo.ipynb   # executed demo with saved outputs
 ├── checks/                     # runnable regression checks
+├── scripts/inventory_pdf_images.py  # phase-1 embedded-image inventory
+├── scripts/ocr_table_images.py      # phase-2 image-table OCR (optional Tesseract)
+├── scripts/recognize_structure_images.py # DECIMER OCSR -> RDKit -> InChIKey
+├── docs/FIGURE_TABLE_OCR.md     # text/table OCR and structure-image pipeline
 ├── HANDOFF.md                  # measured findings, decisions, known limits
 ├── papers/PAPERS.md             # source papers and download instructions
 ├── data/lexicon.json            # shipped name-to-SMILES mapping
@@ -200,11 +205,40 @@ Retrieval insights (exact-name coverage and BM25 comparisons), and Source
 library (original PDF downloads). Chemical-name queries use the resolved
 structure; unresolved names stop instead of falling back to an example.
 
-Run the UI regression checks with `python checks/check_workspace.py`. These
-exercise the real local index and mock only the external answer service.
-Coverage metrics include references; ranked retrieval filters detected reference
-lists. Topic terms rank matching structures and may fall back to general
-structure passages when no topic terms match.
+Run checks from the repo root (no network). `check_image_inventory.py` exits
+0 with SKIP/OK when `papers/*.pdf` are absent, so a clone without the corpus
+still passes:
+
+```bash
+python checks/check_candidates.py
+python checks/check_workspace.py
+python checks/check_chat.py
+python checks/check_plots.py
+python checks/check_solubility.py
+python checks/check_image_inventory.py
+python checks/check_table_ocr.py
+python checks/check_structure_ocr.py
+```
+
+`check_workspace.py` exercises the real local index and mocks only the external
+answer service. Coverage metrics include references; ranked retrieval filters
+detected reference lists. Topic terms rank matching structures and may fall
+back to general structure passages when no topic terms match.
+`check_solubility.py` needs a local paper B PDF and `data/index.json`. Image
+inventory writes gitignored metadata only and does not rebuild the index;
+`--image-tables` adds accepted grids to the index and shows every attempted
+raster in the **Image tables** tab. `check_table_ocr.py` is SKIP/OK without
+PDFs or Tesseract.
+`python build_index.py --image-tables` is opt-in and off by default. See
+[docs/FIGURE_TABLE_OCR.md](docs/FIGURE_TABLE_OCR.md).
+
+Chemical drawings use a different, optional path. Install
+`requirements-structure-ocr.txt`, then run
+`python build_index.py --offline --structure-images`. Complete pages are rendered
+before DECIMER segmentation so vector structures are not limited to PDF image
+objects. DECIMER predictions enter retrieval only after RDKit parsing and
+InChIKey generation. The UI keeps the source crop beside the reconstructed
+structure; accepted means chemically parseable, not manually confirmed.
 
 ### Optional plots in chat
 

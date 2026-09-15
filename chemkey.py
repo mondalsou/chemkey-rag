@@ -30,6 +30,7 @@ RDLogger.DisableLog("rdApp.*")
 PUBCHEM_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/{prop}/TXT"
 PUBCHEM_DELAY_SECONDS = 0.25  # PubChem asks for <= 5 requests/second
 MIN_HEAVY_ATOMS = 3           # drop water, counter-ions and lexical noise
+MAX_TABLE_NAMES = 25          # per OCR'd table; OCR artifacts are not worth a lookup
 
 
 # --------------------------------------------------------------------------
@@ -348,7 +349,148 @@ def build_index(pdf_paths, resolver, max_candidates=500, verbose=True):
         chunk["compounds"] = sorted(hits)
         chunk["blocks"] = sorted({hit["block"] for hit in hits.values()})
 
-    return {"chunks": chunks, "compounds": compounds}
+    return {"chunks": chunks, "compounds": compounds, "image_structures": []}
+
+
+def attach_image_structures(index, report):
+    """Add RDKit-validated OCSR results as structure-searchable anchors.
+
+    The crop is the evidence that a structure depiction exists.  It is not
+    treated as evidence for a property or experimental claim; same-page text is
+    still retrieved separately and remains subject to the normal grounding
+    rules.
+    """
+    chunks = [
+        chunk for chunk in index.get("chunks", [])
+        if chunk.get("extraction_method") != "structure_ocr"
+    ]
+    structures = [
+        dict(record) for record in report.get("structures", [])
+        if record.get("status") == "accepted"
+        and record.get("block")
+        and record.get("smiles")
+    ]
+    for record in structures:
+        chunks.append(
+            {
+                "source_doc": record["source_doc"],
+                "page_number": record["page_number"],
+                "text": (
+                    "Machine-recognized chemical structure depiction. "
+                    "Inspect the retained source crop before treating the "
+                    "recognized connectivity as confirmed."
+                ),
+                "extraction_method": "structure_ocr",
+                "compounds": [],
+                "blocks": [record["block"]],
+                "image_structure_ids": [record["id"]],
+            }
+        )
+    index["chunks"] = chunks
+    index["image_structures"] = structures
+    # Keep every processed crop in the local index for visual audit. Rejected
+    # candidates never receive a retrieval anchor and are never returned by
+    # structure search.
+    index["structure_ocr_candidates"] = [
+        dict(record) for record in report.get("structures", [])
+    ]
+    index["structure_ocr"] = {
+        key: report.get(key)
+        for key in ("pipeline", "source_mode", "recognizer", "segmenter", "counts")
+    }
+    return index
+
+
+def table_rows_to_text(cells, spanning_rows=None):
+    """Flatten a recovered grid to searchable text, one row per line.
+
+    Empty cells keep their position. Dropping them would shift every later
+    value one column left, so the passage would assert a pairing the table
+    never made - the same invention the OCR gate exists to prevent.
+    """
+    spanning = set(spanning_rows or [])
+    lines = []
+    for number, row in enumerate(cells or []):
+        lines.append(row[0] if number in spanning else " | ".join(row))
+    return "\n".join(lines).strip()
+
+
+def attach_image_tables(index, report, resolver=None, max_names=MAX_TABLE_NAMES):
+    """Add accepted OCR'd tables as retrievable passages; keep every candidate.
+
+    An accepted grid is OCR output, not a transcription anyone checked: the
+    passage carries that warning, and the crop stays on disk for review.
+    Refused rasters never become passages.
+    """
+    chunks = [
+        chunk for chunk in index.get("chunks", [])
+        if chunk.get("extraction_method") != "table_ocr"
+    ]
+    accepted = [
+        dict(record) for record in report.get("tables", [])
+        if record.get("status") == "accepted" and record.get("cells")
+    ]
+    compounds = index.setdefault("compounds", {})
+    for record in accepted:
+        body = table_rows_to_text(record["cells"], record.get("spanning_rows"))
+        names = []
+        if resolver is not None:
+            # OCR text carries artifacts ("cm\"!", "Ist der"); resolving every
+            # one of them would mean an uncapped run of PubChem lookups whose
+            # misses are cached. build_index caps by frequency; cap here too.
+            found = sorted(candidate_names(body, vocab=resolver.lexicon))
+            for name in found[:max_names]:
+                if name not in compounds:
+                    smiles = resolver.resolve(name)
+                    full_key, block = to_inchikey(smiles)
+                    if not block:
+                        continue
+                    compounds[name] = {
+                        "smiles": smiles, "inchikey": full_key, "block": block,
+                    }
+                names.append(name)
+        chunks.append(
+            {
+                "source_doc": record["filename"],
+                "page_number": record["page"],
+                "text": (
+                    "Table recovered by OCR from an image-only page. "
+                    "Cell values are machine-read; check the retained crop "
+                    "before quoting a number.\n" + body
+                ),
+                "extraction_method": "table_ocr",
+                "compounds": sorted(set(names)),
+                "blocks": sorted({compounds[n]["block"] for n in names}),
+                "table_ocr_id": record["id"],
+            }
+        )
+    if resolver is not None:
+        resolver.save()
+    index["chunks"] = chunks
+    index["image_tables"] = accepted
+    index["table_ocr_candidates"] = [
+        dict(record) for record in report.get("tables", [])
+        if record.get("status") != "skipped"
+    ]
+    index["table_ocr"] = {
+        key: report.get(key)
+        for key in (
+            "classifier", "confidence_threshold", "min_rows", "min_cols",
+            "min_fill_fraction", "column_gap_scale", "column_support_fraction",
+            "tesseract_version", "counts",
+        )
+    }
+    return index
+
+
+def image_structures_for_block(index, block):
+    """Return accepted, reviewable image recognitions for one connectivity key."""
+    if not block:
+        return []
+    return [
+        record for record in index.get("image_structures", [])
+        if record.get("block") == block and record.get("status") == "accepted"
+    ]
 
 
 def save_index(index, path="data/index.json"):
