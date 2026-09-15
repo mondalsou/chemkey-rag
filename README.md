@@ -93,7 +93,7 @@ close enough — you probably only need `pypdf`:
 
 ```bash
 conda activate <your-rdkit-env>
-python -c "import rdkit, streamlit, pypdf, requests, dotenv" || pip install -r requirements.txt
+python -c "import rdkit, streamlit, pypdf, PIL, requests, dotenv" || pip install -r requirements.txt
 ```
 
 **Or make a dedicated one:**
@@ -137,6 +137,8 @@ chemkey-rag/
 ├── evidence_plots.py            # verified table parsing and plot rendering
 ├── ChemKey_Research_Demo.ipynb   # executed demo with saved outputs
 ├── checks/                     # runnable regression checks
+├── scripts/inventory_pdf_images.py  # phase-1 embedded-image inventory
+├── docs/FIGURE_TABLE_OCR.md     # figure/table OCR phases (1 done, 2–3 planned)
 ├── HANDOFF.md                  # measured findings, decisions, known limits
 ├── papers/PAPERS.md             # source papers and download instructions
 ├── data/lexicon.json            # shipped name-to-SMILES mapping
@@ -200,11 +202,27 @@ Retrieval insights (exact-name coverage and BM25 comparisons), and Source
 library (original PDF downloads). Chemical-name queries use the resolved
 structure; unresolved names stop instead of falling back to an example.
 
-Run the UI regression checks with `python checks/check_workspace.py`. These
-exercise the real local index and mock only the external answer service.
-Coverage metrics include references; ranked retrieval filters detected reference
-lists. Topic terms rank matching structures and may fall back to general
-structure passages when no topic terms match.
+Run checks from the repo root (no network). `check_image_inventory.py` exits
+0 with SKIP/OK when `papers/*.pdf` are absent, so a clone without the corpus
+still passes:
+
+```bash
+python checks/check_candidates.py
+python checks/check_workspace.py
+python checks/check_chat.py
+python checks/check_plots.py
+python checks/check_solubility.py
+python checks/check_image_inventory.py
+```
+
+`check_workspace.py` exercises the real local index and mocks only the external
+answer service. Coverage metrics include references; ranked retrieval filters
+detected reference lists. Topic terms rank matching structures and may fall
+back to general structure passages when no topic terms match.
+`check_solubility.py` needs a local paper B PDF and `data/index.json`. Image
+inventory (`python scripts/inventory_pdf_images.py`) writes gitignored metadata
+only and does not rebuild the index. See
+[docs/FIGURE_TABLE_OCR.md](docs/FIGURE_TABLE_OCR.md).
 
 ### Optional plots in chat
 
