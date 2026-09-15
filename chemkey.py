@@ -348,7 +348,60 @@ def build_index(pdf_paths, resolver, max_candidates=500, verbose=True):
         chunk["compounds"] = sorted(hits)
         chunk["blocks"] = sorted({hit["block"] for hit in hits.values()})
 
-    return {"chunks": chunks, "compounds": compounds}
+    return {"chunks": chunks, "compounds": compounds, "image_structures": []}
+
+
+def attach_image_structures(index, report):
+    """Add RDKit-validated OCSR results as structure-searchable anchors.
+
+    The crop is the evidence that a structure depiction exists.  It is not
+    treated as evidence for a property or experimental claim; same-page text is
+    still retrieved separately and remains subject to the normal grounding
+    rules.
+    """
+    chunks = [
+        chunk for chunk in index.get("chunks", [])
+        if chunk.get("extraction_method") != "structure_ocr"
+    ]
+    structures = [
+        dict(record) for record in report.get("structures", [])
+        if record.get("status") == "accepted"
+        and record.get("block")
+        and record.get("smiles")
+    ]
+    for record in structures:
+        chunks.append(
+            {
+                "source_doc": record["source_doc"],
+                "page_number": record["page_number"],
+                "text": (
+                    "Machine-recognized chemical structure depiction. "
+                    "Inspect the retained source crop before treating the "
+                    "recognized connectivity as confirmed."
+                ),
+                "extraction_method": "structure_ocr",
+                "compounds": [],
+                "blocks": [record["block"]],
+                "image_structure_ids": [record["id"]],
+            }
+        )
+    index["chunks"] = chunks
+    index["image_structures"] = structures
+    index["structure_ocr"] = {
+        key: report.get(key)
+        for key in ("pipeline", "source_mode", "recognizer", "segmenter", "counts")
+    }
+    return index
+
+
+def image_structures_for_block(index, block):
+    """Return accepted, reviewable image recognitions for one connectivity key."""
+    if not block:
+        return []
+    return [
+        record for record in index.get("image_structures", [])
+        if record.get("block") == block and record.get("status") == "accepted"
+    ]
 
 
 def save_index(index, path="data/index.json"):

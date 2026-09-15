@@ -170,6 +170,10 @@ def spellings_for_block(index, block):
     return sorted(n for n, r in index["compounds"].items() if r["block"] == block)
 
 
+def image_structures_for_block(index, block):
+    return ck.image_structures_for_block(index, block)
+
+
 def chunks_with_block(chunks, block):
     return {i for i, c in enumerate(chunks) if block in c["blocks"]}
 
@@ -299,6 +303,45 @@ def render_evidence(item):
         st.markdown(f"<div class='ck-snip'>...{snippet}...</div>", unsafe_allow_html=True)
 
 
+def render_image_structures(records):
+    """Show source crop beside the connectivity reconstructed by OCSR."""
+    if not records:
+        st.info("No accepted image structure matches the selected molecule.")
+        return
+    for record in records:
+        with st.container(border=True):
+            st.markdown(
+                f"<div class='ck-meta'>{html.escape(record['source_doc'])} &nbsp;·&nbsp; "
+                f"PAGE {record['page_number']} &nbsp;·&nbsp; "
+                f"{html.escape(record.get('source_kind', 'image')).upper()} &nbsp;·&nbsp; "
+                f"{html.escape(record.get('recognizer', 'OCSR'))}</div>",
+                unsafe_allow_html=True,
+            )
+            source_col, reconstructed_col = st.columns(2, gap="large")
+            with source_col:
+                st.markdown("**Source crop**")
+                image_path = record.get("image_path")
+                if image_path and Path(image_path).exists():
+                    st.image(image_path, use_container_width=True)
+                else:
+                    st.caption("The local source crop is not available in this deployment.")
+            with reconstructed_col:
+                st.markdown("**Machine-read connectivity**")
+                svg = depict(record["smiles"], (360, 220))
+                if svg:
+                    st.markdown(svg, unsafe_allow_html=True)
+                st.code(record["smiles"], language=None)
+            confidence = record.get("confidence")
+            confidence_text = (
+                f" · model confidence {confidence:.3f}" if isinstance(confidence, (int, float))
+                else ""
+            )
+            st.caption(
+                f"RDKit-valid · InChIKey {record['inchikey']}{confidence_text}. "
+                "Compare the reconstruction with the crop; validity does not prove recognition accuracy."
+            )
+
+
 # --------------------------------------------------------------------------
 
 def main():
@@ -334,7 +377,10 @@ def main():
         st.caption("● Answer model configured" if api_key else "○ Add a key for generated answers")
         st.divider()
         with st.expander("Scope & limits"):
-            st.caption("Text-based evidence only. Drawings are not indexed. Connectivity matching does not distinguish stereoisomers.")
+            if index.get("image_structures"):
+                st.caption("Text plus RDKit-validated image structures. Every accepted OCSR result keeps its source crop for review. Connectivity matching does not distinguish stereoisomers.")
+            else:
+                st.caption("No image structures in this index. Run build_index.py --structure-images to add reviewed OCSR evidence. Connectivity matching does not distinguish stereoisomers.")
     st.markdown("<div class='ck-topbar'><strong>CHEMKEY / RESEARCH</strong><span>LITERATURE EXPLORER</span><span class='ck-status'>● &nbsp; Local index ready</span></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='ck-hero-title'>One structure. <em>Every name.</em></h1>", unsafe_allow_html=True)
     left, right = st.columns([2.5, 1], gap="large")
@@ -398,8 +444,8 @@ def main():
             st.caption("Names and CAS identifiers resolve to the same structure.")
         with st.expander("How to read this comparison"):
             st.caption("Each name matches only that exact phrase. Structure retrieval joins indexed names by connectivity key. Counts include references; ranked results filter detected bibliographies. Name counts overlap and should not be added.")
-            st.caption("This shows the benefit over one name, not over a complete synonym list. See Retrieval insights for that comparison. Drawn-only structures are not indexed.")
-    evidence_tab, chat_tab, compare_tab, library_tab = st.tabs(["Evidence explorer", "Ask the library", "Retrieval insights", "Source library"])
+            st.caption("This shows the benefit over one name, not over a complete synonym list. See Retrieval insights for that comparison. Accepted image structures are shown separately with their original crops.")
+    evidence_tab, image_tab, chat_tab, compare_tab, library_tab = st.tabs(["Evidence explorer", "Image structures", "Ask the library", "Retrieval insights", "Source library"])
     with evidence_tab:
         c1, c2 = st.columns([3, 2])
         question_filter = c1.text_input("Narrow by topic", placeholder="e.g. solubility, hydrogen bonds, DMSO")
@@ -410,6 +456,24 @@ def main():
         st.download_button("↓ Export evidence", json.dumps({"query":subject_label,"smiles":query_smiles,"block":block,"sources":hits}, indent=2),
                            file_name="chemkey-evidence.json", mime="application/json", disabled=not hits)
         render_sources(hits, "No indexed passages for this structure in the selected papers.")
+    with image_tab:
+        st.subheader("Structures captured from figures and tables")
+        report = index.get("structure_ocr") or {}
+        counts = report.get("counts") or {}
+        accepted_records = index.get("image_structures") or []
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Candidate crops", counts.get("crops", 0))
+        m2.metric("RDKit-valid", counts.get("accepted", len(accepted_records)))
+        m3.metric("Match selected molecule", len(image_structures_for_block(index, block)))
+        if report:
+            st.caption(
+                f"{report.get('segmenter', 'segmenter')} → "
+                f"{report.get('recognizer', 'recognizer')} → RDKit → InChIKey. "
+                "Invalid predictions are refused, not indexed."
+            )
+        else:
+            st.caption("This index was built without the optional structure-image pipeline.")
+        render_image_structures(image_structures_for_block(index, block))
     with compare_tab:
         st.subheader("What does structure actually add?")
         reach = reach_report(INDEX_PATH, mtime, block, text_query if mode == "Chemical name" else "")

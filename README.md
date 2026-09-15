@@ -108,6 +108,7 @@ Download the three papers listed in [`papers/PAPERS.md`](papers/PAPERS.md) into
 
 ```bash
 python build_index.py --offline     # lexicon only, no network
+python build_index.py --offline --structure-images  # optional local OCSR
 streamlit run streamlit_app.py
 ```
 
@@ -139,7 +140,8 @@ chemkey-rag/
 ├── checks/                     # runnable regression checks
 ├── scripts/inventory_pdf_images.py  # phase-1 embedded-image inventory
 ├── scripts/ocr_table_images.py      # phase-2 image-table OCR (optional Tesseract)
-├── docs/FIGURE_TABLE_OCR.md     # figure/table OCR (phases 1–2 done; 3 not started)
+├── scripts/recognize_structure_images.py # DECIMER OCSR -> RDKit -> InChIKey
+├── docs/FIGURE_TABLE_OCR.md     # text/table OCR and structure-image pipeline
 ├── HANDOFF.md                  # measured findings, decisions, known limits
 ├── papers/PAPERS.md             # source papers and download instructions
 ├── data/lexicon.json            # shipped name-to-SMILES mapping
@@ -215,6 +217,7 @@ python checks/check_plots.py
 python checks/check_solubility.py
 python checks/check_image_inventory.py
 python checks/check_table_ocr.py
+python checks/check_structure_ocr.py
 ```
 
 `check_workspace.py` exercises the real local index and mocks only the external
@@ -226,6 +229,14 @@ inventory and image-table OCR write gitignored metadata only and do not rebuild
 the index. `check_table_ocr.py` is SKIP/OK without PDFs or Tesseract.
 `python build_index.py --image-tables` is opt-in and off by default. See
 [docs/FIGURE_TABLE_OCR.md](docs/FIGURE_TABLE_OCR.md).
+
+Chemical drawings use a different, optional path. Install
+`requirements-structure-ocr.txt`, then run
+`python build_index.py --offline --structure-images`. Complete pages are rendered
+before DECIMER segmentation so vector structures are not limited to PDF image
+objects. DECIMER predictions enter retrieval only after RDKit parsing and
+InChIKey generation. The UI keeps the source crop beside the reconstructed
+structure; accepted means chemically parseable, not manually confirmed.
 
 ### Optional plots in chat
 

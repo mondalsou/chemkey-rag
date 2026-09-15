@@ -10,4 +10,7 @@ data/index.json
 data/name_cache.json
 data/image_inventory.json
 data/table_ocr.json
+data/structure_ocr.json
 data/extracted_images/
+data/extracted_structures/
+.venv-ocsr/

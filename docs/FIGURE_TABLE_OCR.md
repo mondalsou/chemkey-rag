@@ -86,11 +86,41 @@ Paper B's remaining candidates are figure/plot rasters (COSMO-RS, axis labels),
 not numeric tables. Refusing them is correct. Paper B Table 1 is already digital
 text via pypdf on page 10. Paper C was not present.
 
-## Phase 3 (not started) — structure drawings
+## Phase 3 (implemented, opt-in) — structure drawings
 
-DECIMER / MolScribe on `structure_drawing` candidates, then the InChIKey skeleton
-join used for names. Not imported in phase 2. Stays behind a future optional
-ingest flag. Demo copy must not claim figure OCR is production.
+`scripts/recognize_structure_images.py` provides an end-to-end local OCSR path:
+
+1. Render complete PDF pages at 300 DPI, so vector drawings are visible.
+2. Use DECIMER-Segmentation to crop molecular depictions from pages, schemes and
+   tables. Embedded rasters are also inspected as a second route.
+3. Use DECIMER to translate each crop into SMILES.
+4. Refuse empty, unparsable or very small predictions. RDKit canonicalises every
+   accepted prediction and generates the full InChIKey plus connectivity block.
+5. Retain the original crop under `data/extracted_structures/` and provenance in
+   `data/structure_ocr.json`.
+6. Add one structure-searchable anchor per accepted crop to `data/index.json`.
+   The anchor proves only that a depiction was recognized on that page; it does
+   not turn nearby prose into a verified property claim.
+
+The optional model stack is deliberately separate from the lightweight app:
+
+```bash
+python -m venv .venv-ocsr
+source .venv-ocsr/bin/activate
+pip install -r requirements.txt -r requirements-structure-ocr.txt
+python build_index.py --offline --structure-images --structure-source both
+python checks/check_structure_ocr.py
+```
+
+The Streamlit **Image structures** tab displays each matching source crop beside
+the RDKit rendering reconstructed from the predicted SMILES. A chemically valid
+SMILES is necessary but not proof that the drawing was read correctly, so the
+visual comparison remains part of the interface.
+
+CAS does not publish an installable image-recognition model. This implementation
+reproduces the relevant workflow pattern—depiction detection, graph recognition,
+chemical validation, connectivity search and human-visible provenance—using the
+open DECIMER stack. It must not be described as CAS technology.
 
 ## Licensing
 
