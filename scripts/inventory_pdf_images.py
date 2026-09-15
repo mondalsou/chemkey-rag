@@ -69,8 +69,27 @@ DEFAULT_PAPERS_DIR = "papers"
 DEFAULT_OUT = "data/image_inventory.json"
 
 # Geometry that is already decisive; skip pixel decode.
-_STRIP_MAX_THICKNESS = 16
-_STRIP_MIN_ASPECT = 8.0
+# MDPI v2 of paper A stores table *rules* as ~1601x5 rasters — not tables.
+STRIP_MAX_THICKNESS = 16
+STRIP_MIN_ASPECT = 8.0
+_STRIP_MAX_THICKNESS = STRIP_MAX_THICKNESS  # backward alias
+_STRIP_MIN_ASPECT = STRIP_MIN_ASPECT
+
+
+def is_thin_table_rule(width, height):
+    """True for 1-row / few-pixel-tall (or analogously thin) table RULE rasters.
+
+    Paper A's MDPI v2 packaging embeds hundreds of ~1601x5 strips. They are
+    ruled lines, not tables — phase-2 OCR must skip them.
+    """
+    if not width or not height:
+        return False
+    aspect = width / height
+    if height <= STRIP_MAX_THICKNESS and aspect >= STRIP_MIN_ASPECT:
+        return True
+    if width <= STRIP_MAX_THICKNESS and aspect <= 1.0 / STRIP_MIN_ASPECT:
+        return True
+    return False
 
 
 def find_pdfs(papers_dir=DEFAULT_PAPERS_DIR):
@@ -246,9 +265,9 @@ def classify_embedded_image(width, height, pil_image=None):
 
     aspect = width / height
 
-    if height <= _STRIP_MAX_THICKNESS and aspect >= _STRIP_MIN_ASPECT:
-        return "table_image", ["thin_wide_strip"]
-    if width <= _STRIP_MAX_THICKNESS and aspect <= 1.0 / _STRIP_MIN_ASPECT:
+    if is_thin_table_rule(width, height):
+        if height <= STRIP_MAX_THICKNESS:
+            return "table_image", ["thin_wide_strip"]
         return "table_image", ["thin_tall_strip"]
 
     if pil_image is None:
@@ -336,10 +355,7 @@ def _pil_from_xobject(xobj):
 def _needs_pixels(width, height):
     if not width or not height:
         return True
-    aspect = width / height
-    if height <= _STRIP_MAX_THICKNESS and aspect >= _STRIP_MIN_ASPECT:
-        return False
-    if width <= _STRIP_MAX_THICKNESS and aspect <= 1.0 / _STRIP_MIN_ASPECT:
+    if is_thin_table_rule(width, height):
         return False
     return True
 
@@ -413,6 +429,31 @@ def inventory_page_images(page, filename, page_number):
                 pass
 
     return records
+
+
+def extract_embedded_raster(pdf_path, page_number, image_index):
+    """Decode one embedded image to a PIL RGB image, or None. In-memory only."""
+    if Image is None:
+        return None
+    reader = PdfReader(pdf_path)
+    try:
+        page = reader.pages[page_number - 1]
+    except (IndexError, TypeError):
+        return None
+    try:
+        keys = list(page.images.keys())
+    except Exception:
+        return None
+    if image_index < 0 or image_index >= len(keys):
+        return None
+    key = keys[image_index]
+    try:
+        image_file = page.images[key]
+    except Exception:
+        image_file = None
+    if image_file is not None and image_file.image is not None:
+        return image_file.image.convert("RGB")
+    return _pil_from_xobject(_resolve_xobject(page, key))
 
 
 def inventory_pdf(pdf_path):

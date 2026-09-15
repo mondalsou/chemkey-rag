@@ -1,0 +1,11 @@
+# Optional extra for scripts/ocr_table_images.py (phase 2 image-table OCR).
+# Not required for the Streamlit demo or default ingest.
+#
+# System package (Debian/Ubuntu): tesseract-ocr tesseract-ocr-eng
+#   sudo apt-get install tesseract-ocr tesseract-ocr-eng
+#
+# Do not confuse with page-level sparse OCR extras (if present on another
+# branch as requirements-ocr.txt + PyMuPDF). This file is pytesseract only;
+# rasters come from pypdf.
+
+pytesseract>=0.3.10

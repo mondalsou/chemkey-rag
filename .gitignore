@@ -9,4 +9,5 @@ data/index.json
 !data/index.public.json
 data/name_cache.json
 data/image_inventory.json
+data/table_ocr.json
 data/extracted_images/

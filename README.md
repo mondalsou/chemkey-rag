@@ -138,7 +138,8 @@ chemkey-rag/
 ├── ChemKey_Research_Demo.ipynb   # executed demo with saved outputs
 ├── checks/                     # runnable regression checks
 ├── scripts/inventory_pdf_images.py  # phase-1 embedded-image inventory
-├── docs/FIGURE_TABLE_OCR.md     # figure/table OCR phases (1 done, 2–3 planned)
+├── scripts/ocr_table_images.py      # phase-2 image-table OCR (optional Tesseract)
+├── docs/FIGURE_TABLE_OCR.md     # figure/table OCR (phases 1–2 done; 3 not started)
 ├── HANDOFF.md                  # measured findings, decisions, known limits
 ├── papers/PAPERS.md             # source papers and download instructions
 ├── data/lexicon.json            # shipped name-to-SMILES mapping
@@ -213,6 +214,7 @@ python checks/check_chat.py
 python checks/check_plots.py
 python checks/check_solubility.py
 python checks/check_image_inventory.py
+python checks/check_table_ocr.py
 ```
 
 `check_workspace.py` exercises the real local index and mocks only the external
@@ -220,8 +222,9 @@ answer service. Coverage metrics include references; ranked retrieval filters
 detected reference lists. Topic terms rank matching structures and may fall
 back to general structure passages when no topic terms match.
 `check_solubility.py` needs a local paper B PDF and `data/index.json`. Image
-inventory (`python scripts/inventory_pdf_images.py`) writes gitignored metadata
-only and does not rebuild the index. See
+inventory and image-table OCR write gitignored metadata only and do not rebuild
+the index. `check_table_ocr.py` is SKIP/OK without PDFs or Tesseract.
+`python build_index.py --image-tables` is opt-in and off by default. See
 [docs/FIGURE_TABLE_OCR.md](docs/FIGURE_TABLE_OCR.md).
 
 ### Optional plots in chat

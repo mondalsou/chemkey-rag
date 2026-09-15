@@ -21,3 +21,7 @@ dependencies:
   # Notebook
   - jupyter>=1.0
   - ipykernel>=6.29
+
+  # Image-table OCR (phase 2) is optional and not part of this default env.
+  # pip install -r requirements-table-ocr.txt  +  system tesseract-ocr
+  # Do not add pytesseract here: Streamlit-only installs must keep working.
