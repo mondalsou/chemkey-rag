@@ -95,23 +95,23 @@ if __name__ == "__main__":
     x = "organic_fraction" if composition else "temperature_C"
     group = "temperature_C" if composition else "organic_fraction"
     fig, ax = plt.subplots(figsize=(9, 4.5), layout="constrained")
-    fig.patch.set_facecolor("#fffdf7")
-    ax.set_facecolor("#fffdf7")
-    colors = ["#c2317a", "#1d3a45", "#4e8f9c", "#c98a3c", "#7a6aa8", "#3f8f6b"]
+    fig.patch.set_facecolor("#fffdf6")
+    ax.set_facecolor("#fffdf6")
+    colors = ["#b0286c", "#16323d", "#4e8f9c", "#b8863a", "#6f6399", "#3f8f6b"]
     for color, value in zip(colors, sorted({r[group] for r in table["rows"]})):
         points = sorted([r for r in table["rows"] if r[group] == value], key=lambda r: r[x])
         ax.errorbar([r[x] for r in points], [r["solubility_x100"] for r in points],
                     yerr=[r["uncertainty_x100"] for r in points],
                     label=f"{value:g} °C" if composition else f"x = {value:g}",
                     color=color, marker="o", markersize=4, linewidth=1.4, capsize=3)
-    ax.set_xlabel("Organic solvent mole fraction" if composition else "Temperature (°C)", color="#41606b")
-    ax.set_ylabel("Solubility mole fraction × 100", color="#41606b")
-    ax.set_title(table["title"], color="#1d3a45", loc="left", pad=16)
-    ax.tick_params(colors="#7f959d")
+    ax.set_xlabel("Organic solvent mole fraction" if composition else "Temperature (°C)", color="#3c5a66")
+    ax.set_ylabel("Solubility mole fraction × 100", color="#3c5a66")
+    ax.set_title(table["title"], color="#16323d", loc="left", pad=16)
+    ax.tick_params(colors="#55696f")
     ax.grid(alpha=.12)
     for spine in ax.spines.values():
-        spine.set_color("#e7dac0")
-    ax.legend(frameon=False, labelcolor="#41606b", fontsize=9, ncol=2)
+        spine.set_color("#e2d6bd")
+    ax.legend(frameon=False, labelcolor="#3c5a66", fontsize=9, ncol=2)
     ax.set_ylim(bottom=0)
     fig.savefig(sys.stdout, format="svg")
     plt.close(fig)

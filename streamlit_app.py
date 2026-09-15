@@ -70,75 +70,103 @@ PRESET_QUESTIONS = [
 
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&display=swap');
-/* Palette read off the shadcn/ui theme-generator reference: warm cream ground
-   under a hairline grid, dark slate-teal ink, one saturated magenta accent
-   used sparingly. Every colour in this file resolves from these tokens -
-   swapping a theme means editing this block and nothing else. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+/* One ground plane, raised surfaces only where the page takes input or makes a
+   claim, and a single accent that is allowed in three places. Every colour,
+   radius and family resolves from this block. */
 :root {
-  --paper:#fdf6e6; --surface:#fffdf7; --surface-2:#f6ecd8;
-  --line:#e7dac0; --line-soft:#f0e6d2;
-  --ink:#1d3a45; --body:#41606b; --muted:#7f959d; --faint:#9db0b6;
-  --accent:#c2317a; --accent-deep:#a32764; --accent-soft:#f3d3e3;
-  --teal-soft:#cfe0e3; --teal-wash:#eef5f6;
-  --serif:'Playfair Display',Georgia,serif;
-  --sans:'Jost','DM Sans',system-ui,sans-serif;
+  --paper:#f2ebdc; --sunken:#e9dfc9; --surface:#fffdf6;
+  --line:#e2d6bd; --line-soft:#eae0cc;
+  --ink:#16323d; --body:#3c5a66; --muted:#55696f;
+  --accent:#b0286c; --accent-deep:#8e1f57; --accent-tint:#f6e2ec;
+  --shadow-1:0 1px 2px rgba(22,50,61,.04), 0 8px 24px -12px rgba(22,50,61,.10);
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --sans:'Inter',system-ui,sans-serif;
+  --serif:'Newsreader',Georgia,serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
 }
-.stApp {background:repeating-linear-gradient(0deg,var(--line-soft) 0 1px,transparent 1px 64px),repeating-linear-gradient(90deg,var(--line-soft) 0 1px,transparent 1px 64px),var(--paper);color:var(--body);font-family:var(--sans);}
-.block-container {padding-top:2.4rem;max-width:1500px;padding-bottom:5rem;}
-h1,h2,h3 {color:var(--ink);font-family:var(--sans)!important;font-weight:600!important;letter-spacing:-.02em;}
-h3 {font-size:1.4rem!important;}
-[data-testid="stHeader"] {background:#fdf6e6d9;}
-[data-testid="stSidebar"] {background:var(--surface);border-right:1px solid var(--line);}
-[data-testid="stSidebar"] .block-container {padding-top:2rem;}
-[data-testid="stMetric"] {background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px 22px;min-height:118px;}
-[data-testid="stMetricValue"] {font-family:var(--sans);font-weight:600;font-size:2.4rem;color:var(--ink);}
-[data-testid="stMetricLabel"] {color:var(--muted);font-size:.78rem;letter-spacing:.04em;}
-[data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:20px!important;}
-[data-testid="stExpander"] {background:var(--surface);border-color:var(--line);}
-[data-baseweb="tab-list"] {gap:30px;border-bottom:1px solid var(--line);margin:18px 0 26px;}
-[data-baseweb="tab"] {padding:12px 0;font-size:13px;color:var(--muted);letter-spacing:.01em;}
-[data-baseweb="tab"][aria-selected="true"] {color:var(--ink);}
-[data-baseweb="tab-highlight"] {background:var(--accent);}
-.stButton>button,.stDownloadButton>button {background:var(--accent);color:#fffdf7;border:1px solid var(--accent);border-radius:999px;padding:9px 24px;font-family:var(--sans);font-weight:500;letter-spacing:.01em;}
+.stApp {background:var(--paper);color:var(--body);font-family:var(--sans);font-feature-settings:'tnum';}
+.block-container {padding-top:32px;padding-bottom:72px;max-width:1440px;}
+h1,h2,h3 {color:var(--ink);font-family:var(--sans)!important;font-weight:600!important;}
+h2 {font-size:26px!important;line-height:1.2;letter-spacing:-.6px;}
+h3 {font-size:15px!important;line-height:1.3;letter-spacing:0;}
+[data-testid="stHeader"] {background:color-mix(in srgb,var(--paper) 85%,transparent);backdrop-filter:blur(6px);}
+
+/* --- surfaces: flat by default, raised only by opt-in key --- */
+[data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:var(--r-lg)!important;background:transparent;border:1px solid var(--line-soft);padding:20px 22px;}
+.st-key-ck-raised [data-testid="stVerticalBlockBorderWrapper"]>div,
+[data-testid="stMetric"] {background:var(--surface);border-color:var(--line);box-shadow:var(--shadow-1);}
+[data-testid="stVerticalBlock"] {gap:16px;}
+[data-testid="stElementContainer"]:empty {display:none;}
+[data-testid="stMetric"] {border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px;min-height:112px;}
+[data-testid="stMetricValue"] {font:500 44px/1 var(--serif);color:var(--ink);letter-spacing:-1px;}
+[data-testid="stMetricLabel"] {color:var(--muted);font-size:11.5px;}
+[data-testid="stExpander"] {background:transparent;border:0;border-top:1px solid var(--line-soft);border-radius:0;}
+[data-testid="stChatMessage"] {background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);}
+
+/* --- sidebar is chrome, not a surface --- */
+[data-testid="stSidebar"] {background:var(--paper);border-right:1px solid var(--line-soft);}
+[data-testid="stSidebar"] .block-container {padding-top:32px;}
+[data-testid="stSidebar"] [data-testid="stExpander"],
+[data-testid="stSidebar"] [data-testid="stExpander"] details {background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;}
+[data-testid="stSidebar"] [data-testid="stExpander"] {border-top:1px solid var(--line-soft)!important;}
+
+/* --- tabs --- */
+[data-baseweb="tab-list"] {gap:28px;margin:48px 0 24px;border-bottom:1px solid var(--line);}
+[data-baseweb="tab"] {padding:12px 0;font-size:13px;color:var(--muted);}
+[data-baseweb="tab"][aria-selected="true"] {color:var(--ink);font-weight:500;}
+[data-baseweb="tab-highlight"] {background:var(--ink);height:2px;}
+
+/* --- controls: accent lives on the button, nowhere else --- */
+.stButton>button,.stDownloadButton>button {background:var(--accent);color:#fffdf6;border:1px solid var(--accent);border-radius:999px;padding:9px 24px;font-weight:500;}
 .stButton>button:hover,.stDownloadButton>button:hover {background:var(--accent-deep);border-color:var(--accent-deep);color:#fff;}
 [data-testid="stTextInput"] input {font-size:14px;color:var(--ink);}
-[data-testid="stTextInput"] [data-baseweb="input"], [data-baseweb="select"]>div {background:var(--surface);border-color:var(--line);border-radius:12px;}
-[data-testid="stCaptionContainer"] {color:var(--muted);}
-.ck-brand {font:600 32px var(--sans);letter-spacing:-.8px;margin-bottom:8px;color:var(--ink);}
-.ck-brand span {color:var(--accent);font-size:18px;vertical-align:14px;margin-left:3px;}
-.ck-eyebrow {font-size:10px;font-weight:500;letter-spacing:2.2px;color:var(--muted);text-transform:uppercase;margin:8px 0 20px;}
-.ck-sub {color:var(--body);font-size:14px;line-height:1.9;max-width:540px;margin:20px 0;}
-.ck-key {font:400 13px ui-monospace,monospace;letter-spacing:1px;margin:10px 0;color:var(--accent);}
-.ck-mol {position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,var(--surface) 0,var(--teal-wash) 74%);border:1px solid var(--line);border-radius:22px;text-align:center;padding:26px 15px;box-shadow:0 14px 44px #1d3a450f;}
-.ck-mol:before {content:'';position:absolute;inset:14px;border:1px solid var(--teal-soft);border-radius:50%;z-index:-1;transform:rotate(-25deg) scale(.84);}
+[data-testid="stTextInput"] [data-baseweb="input"], [data-baseweb="select"]>div {background:var(--paper);border-color:var(--line);border-radius:var(--r-md);}
+[data-testid="stCaptionContainer"] {color:var(--muted);font-size:11.5px;}
+
+/* --- page furniture --- */
+.ck-brand {font:600 30px var(--sans);letter-spacing:-1px;margin-bottom:8px;color:var(--ink);}
+.ck-brand span {color:var(--ink);font-size:16px;vertical-align:12px;margin-left:3px;}
+.ck-eyebrow {font:600 10px var(--sans);letter-spacing:1.6px;color:var(--muted);text-transform:uppercase;margin:8px 0 24px;}
+.ck-sub {color:var(--body);font-size:14px;line-height:1.7;max-width:74ch;margin:16px 0;}
+.ck-key {display:inline-block;background:var(--sunken);padding:4px 9px;border-radius:var(--r-sm);font:400 12.5px/1 var(--mono);letter-spacing:.3px;color:var(--ink);margin:10px 0;}
+.ck-topbar {display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line-soft);padding-bottom:16px;margin-bottom:48px;color:var(--muted);font-size:11px;letter-spacing:1px;}
+.ck-topbar strong {color:var(--ink);letter-spacing:1.6px;font-weight:600;}
+.ck-hero-title {font:600 clamp(38px,4vw,56px)/1.08 var(--sans);color:var(--ink);letter-spacing:-1.8px;margin:0 0 48px;}
+.ck-hero-title em {font-family:var(--serif);font-style:italic;font-weight:500;letter-spacing:-.5px;color:var(--ink);}
+.ck-hero-note {font-size:11.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:12px;margin:24px 0 10px;}
+
+/* --- molecule panel: raised, warm --- */
+.ck-mol {position:relative;isolation:isolate;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-1);text-align:center;padding:24px 16px;}
+.ck-mol:before {content:'';position:absolute;inset:14px;border:1px solid var(--line-soft);border-radius:50%;z-index:-1;transform:rotate(-25deg) scale(.84);}
 .ck-mol svg {width:100%;height:auto;max-width:370px;}
-.ck-pill {display:inline-block;padding:4px 11px;margin:3px 5px 3px 0;border:1px solid var(--line);border-radius:20px;font-size:11px;background:var(--surface);color:var(--body);}
-.ck-snip {font-size:14px;line-height:1.95;color:var(--body);margin:14px 0;}
-.ck-snip mark {background:var(--accent-soft);color:var(--ink);}
-.ck-meta {font-size:10px;color:var(--faint);letter-spacing:.8px;}
-.ck-grid {overflow-x:auto;margin:10px 0;}
-.ck-grid table {border-collapse:collapse;font-size:12px;color:var(--body);width:100%;}
+
+/* --- evidence --- */
+.ck-pill {display:inline-block;padding:4px 10px;margin:3px 5px 3px 0;border:1px solid transparent;border-radius:var(--r-sm);font-size:11.5px;background:var(--sunken);color:var(--body);}
+.ck-snip {font-size:14px;line-height:1.7;color:var(--body);margin:12px 0;max-width:74ch;}
+.ck-snip mark {background:var(--accent-tint);color:var(--ink);border-radius:3px;padding:0 2px;}
+.ck-meta {font-size:11.5px;color:var(--muted);letter-spacing:.2px;}
+.ck-status {font-size:11px;color:var(--body);border:1px solid var(--line);background:var(--sunken);padding:8px 13px;border-radius:999px;display:inline-block;}
+.ck-paper {padding:16px 0;border-bottom:1px solid var(--line-soft);font-size:12px;line-height:1.7;color:var(--body);}
+
+/* --- recovered tables --- */
+.ck-grid {overflow-x:auto;margin:12px 0;}
+.ck-grid table {border-collapse:collapse;font:400 12.5px var(--mono);color:var(--body);width:100%;}
 .ck-grid th, .ck-grid td {border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top;}
-.ck-grid th {color:var(--ink);font-weight:500;background:var(--surface-2);}
-.ck-grid em {color:var(--muted);font-style:italic;}
-.ck-status {font-size:11px;color:var(--body);border:1px solid var(--teal-soft);background:var(--teal-wash);padding:8px 13px;border-radius:20px;display:inline-block;}
-.ck-paper {padding:16px 0;border-bottom:1px solid var(--line-soft);font-size:12px;line-height:1.85;color:var(--body);}
-.ck-topbar {display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:34px;color:var(--muted);font-size:11px;letter-spacing:1px;}
-.ck-topbar strong {color:var(--ink);letter-spacing:2px;font-weight:500;}
-.ck-hero-title {font:600 clamp(34px,3.8vw,54px)/1.14 var(--sans);color:var(--ink);letter-spacing:-1.4px;margin:12px 0 22px;}
-.ck-hero-title em {font-family:var(--serif);font-style:italic;font-weight:500;color:var(--ink);}
-.ck-hero-note {font-size:11px;color:var(--muted);border-left:2px solid var(--accent-soft);padding-left:12px;margin:24px 0 10px;}
-[data-testid="stChatMessage"] {background:var(--surface);border:1px solid var(--line);border-radius:18px;}
-.ck-name-row {display:grid;grid-template-columns:1fr auto;gap:5px 15px;margin:13px 0;font-size:13px;color:var(--body);}
+.ck-grid th {color:var(--ink);font-weight:500;background:var(--sunken);}
+.ck-grid em {color:var(--muted);font-family:var(--sans);font-style:italic;}
+
+/* --- name comparison: the one place the accent means something --- */
+.ck-name-row {display:grid;grid-template-columns:1fr auto;gap:5px 15px;margin:12px 0;font-size:13px;color:var(--body);}
 .ck-name-row.selected {color:var(--ink);}
-.ck-name-row small {font-size:8px;letter-spacing:1px;color:var(--accent);margin-left:6px;}
+.ck-name-row small {font-size:9px;letter-spacing:1px;color:var(--muted);margin-left:6px;}
 .ck-name-row b {font-weight:500;color:var(--ink);}
-.ck-name-track {grid-column:1/-1;height:3px;background:var(--surface-2);border-radius:3px;overflow:hidden;}
-.ck-name-track i {display:block;height:100%;background:var(--accent);border-radius:3px;}
+.ck-name-track {grid-column:1/-1;height:3px;background:var(--sunken);border-radius:var(--r-sm);overflow:hidden;}
+.ck-name-track i {display:block;height:100%;background:#a8b6b9;border-radius:var(--r-sm);}
+.ck-name-row.selected .ck-name-track i {background:var(--accent);}
 .ck-recovery {color:var(--muted);font-size:12px;margin:15px 0;}
-.ck-recovery strong {color:var(--accent);font-family:var(--sans);font-weight:600;font-size:26px;margin-right:5px;}
-@media(max-width:700px) {.block-container{padding:1.4rem 1rem;}.ck-hero-title{font-size:38px;}.ck-topbar{gap:15px;font-size:9px;}[data-baseweb="tab-list"]{gap:15px;}.ck-mol{padding:15px;}}
+.ck-recovery strong {font:500 30px/1 var(--serif);color:var(--accent);margin-right:5px;}
+@media(max-width:700px) {.block-container{padding:24px 16px;}.ck-hero-title{font-size:34px;}.ck-topbar{gap:15px;font-size:9px;}[data-baseweb="tab-list"]{gap:16px;margin-top:32px;}.ck-mol{padding:16px;}}
 </style>
 """
 
@@ -175,8 +203,10 @@ def depict(smiles, size=(300, 190)):
     drawer.drawOptions().useBWAtomPalette()
     # Slate-teal ink with the page's magenta on O, so a molecule reads as part
     # of the page rather than a pasted-in image.
-    drawer.drawOptions().setAtomPalette({-1: (0.11, 0.23, 0.27), 7: (0.25, 0.38, 0.42), 8: (0.76, 0.19, 0.48)})
-    drawer.drawOptions().setSymbolColour((0.11, 0.23, 0.27))
+    # Monochrome, the way a structure is set in a journal. The accent is
+    # reserved for the three places it carries meaning; a molecule is not one.
+    drawer.drawOptions().setAtomPalette({-1: (0.086, 0.196, 0.239)})
+    drawer.drawOptions().setSymbolColour((0.086, 0.196, 0.239))
     drawer.drawOptions().bondLineWidth = 2
     rdMolDraw2D.PrepareAndDrawMolecule(drawer, mol)
     drawer.FinishDrawing()
@@ -510,7 +540,7 @@ def main():
     st.markdown("<h1 class='ck-hero-title'>One structure. <em>Every name.</em></h1>", unsafe_allow_html=True)
     left, right = st.columns([2.5, 1], gap="large")
     with left:
-        with st.container(border=True):
+        with st.container(border=True, key="ck-raised"):
             st.markdown("**Find a molecule**")
             choice = st.selectbox("Start with an example", list(EXAMPLES))
             default_smiles, default_name = EXAMPLES[choice]
