@@ -435,9 +435,11 @@ def render_table_candidates(records, limit=12):
                     f"{confidence:.1f} mean word confidence."
                 )
                 render_recovered_grid(record.get("cells"), record.get("spanning_rows"))
+                spanning_share = record.get("spanning_fraction") or 0.0
                 st.caption(
                     "Machine-read cells, italic rows span the table. "
-                    f"Column edges voted at x = {record.get('column_boundaries')}. "
+                    f"Column edges voted at x = {record.get('column_boundaries')}; "
+                    f"{spanning_share:.0%} of rows spanned and were kept whole. "
                     "Check this crop before quoting a number."
                 )
             else:

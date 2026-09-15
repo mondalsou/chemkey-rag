@@ -208,17 +208,48 @@ report = {
 }
 fixture_index = {"chunks": [{"text": "native page text", "extraction_method": "native"}],
                  "compounds": {}}
-ck.attach_image_tables(fixture_index, report)
+
+
+class OfflineResolver:
+    """Exercise the resolution path without a network call."""
+    lexicon = {"acetaminophen": "CC(=O)Nc1ccc(O)cc1"}
+
+    def __init__(self):
+        self.asked = []
+
+    def resolve(self, name):
+        self.asked.append(name)
+        return self.lexicon.get(name)
+
+    def save(self):
+        pass
+
+
+resolver = OfflineResolver()
+ck.attach_image_tables(fixture_index, report, resolver=resolver)
+assert resolver.asked, "names found in an accepted grid must be resolved"
 table_chunks = [c for c in fixture_index["chunks"] if c.get("extraction_method") == "table_ocr"]
 assert len(table_chunks) == 1, table_chunks
 assert "acetaminophen | 50" in table_chunks[0]["text"]
+
+# An empty cell keeps its column. Dropping it would read "HPLC" as a solubility.
+aligned = ck.table_rows_to_text(
+    [["Compound", "Solubility", "Method"], ["acetaminophen", "", "HPLC"]]
+)
+assert aligned.splitlines()[1] == "acetaminophen |  | HPLC", aligned
+# A spanning row is one cell wide and must not grow empty columns.
+assert ck.table_rows_to_text([["caption", "", ""]], spanning_rows=[0]) == "caption"
 assert table_chunks[0]["table_ocr_id"] == "tbl_accepted"
+assert table_chunks[0]["compounds"] == ["acetaminophen"], table_chunks[0]["compounds"]
+assert table_chunks[0]["blocks"] == ["RZVAJINKPMORJF"], table_chunks[0]["blocks"]
+# The per-table cap bounds how many OCR artifacts reach a PubChem lookup.
+assert len(resolver.asked) <= ck.MAX_TABLE_NAMES
 assert len(fixture_index["chunks"]) == 2, "native chunks must survive"
 assert len(fixture_index["image_tables"]) == 1
 # Refused rasters stay reviewable but never become passages; skips are not shown.
 assert [r["id"] for r in fixture_index["table_ocr_candidates"]] == ["tbl_accepted", "tbl_refused"]
 # Re-attaching replaces table passages instead of duplicating them.
-ck.attach_image_tables(fixture_index, report)
+ck.attach_image_tables(fixture_index, report, resolver=resolver)
 assert len([c for c in fixture_index["chunks"] if c.get("extraction_method") == "table_ocr"]) == 1
 
 # --- native-text table path is untouched (pypdf extract_text, no Tesseract) ---
@@ -242,6 +273,20 @@ assert "ck.save_index" in build_src
 assert "--ocr" not in build_src
 
 assert ocr.CONFIDENCE_THRESHOLD == 70.0
+
+# --- --dry-run writes no sidecar and no crops ---
+with tempfile.TemporaryDirectory() as tmp:
+    dry_crops = Path(tmp) / "crops"
+    ocr.run_table_ocr(
+        papers_dir=str(PAPERS),
+        inventory_path=str(ROOT / "data" / "image_inventory.json"),
+        out_path=str(Path(tmp) / "unwritten.json"),
+        dry_run=True,
+        crops_dir=str(dry_crops),
+        ocr_fn=fake_high,
+    )
+    assert not dry_crops.exists(), "--dry-run must not write crops"
+    assert not (Path(tmp) / "unwritten.json").exists()
 
 assert before == _index_fingerprints(), "table OCR check must not mutate the search index"
 
@@ -287,8 +332,8 @@ with tempfile.TemporaryDirectory() as tmp:
             assert row["cells"], row
             assert row["mean_confidence"] >= ocr.CONFIDENCE_THRESHOLD
             assert row["n_cols"] >= ocr.MIN_COLS and row["n_rows"] >= ocr.MIN_ROWS
-        if row["status"] != "skipped":
-            # every attempted raster keeps its crop for review
+        if row["status"] != "skipped" and row["reason"] != "decode_failed":
+            # every raster that decoded keeps its crop for review
             assert row["image_path"], row
         if row["status"] == "refused":
             assert row["cells"] is None

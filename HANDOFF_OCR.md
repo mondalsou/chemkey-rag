@@ -112,6 +112,29 @@ Local index after the rebuild: 5 papers, 281 chunks, 1 accepted image table, 1
 accepted image structure. `--structure-images` was not re-run; the cached
 `data/structure_ocr.json` was reattached with `ck.attach_image_structures`.
 
+## Review fixes applied (commit 3 on this branch)
+
+A high-effort review of the first two commits found seven issues; all are fixed:
+
+- `table_rows_to_text` dropped empty cells, shifting every later value one
+  column left in the indexed passage. Positions are preserved now. This was the
+  one place the "never invent a cell value" contract leaked.
+- `--dry-run` still wrote PNG crops; it now writes nothing.
+- `print_summary` and the sidecar `notes` still said "search index unchanged"
+  one line after changing it.
+- Table name resolution was uncapped against PubChem on OCR text; capped at
+  `MAX_TABLE_NAMES` (25) per table.
+- `_save_crop` sat outside the try/finally, so an unwritable crops dir leaked
+  the PIL handle and killed the whole build before `save_index`.
+- The crop assertion fired on a legitimate `decode_failed` refusal.
+- `fill_fraction` excludes spanning rows, so it can read 1.0 on a mostly
+  collapsed table. `spanning_fraction` is recorded beside it and shown in the
+  tab (the fixture reports 26.7%).
+
+The cap fix introduced a `TypeError` of its own — `candidate_names` returns a
+set, not a list — which killed `--image-tables`. Fixed, and the fixture check
+now passes an offline resolver so that path is actually exercised.
+
 ## Next recommended work
 
 1. Handle cells that wrap onto a second line. Row clustering is still one line per row, so a wrapped Notes cell becomes an extra row with only one column filled. A second fixture with wrapped cells would measure how far off this is.

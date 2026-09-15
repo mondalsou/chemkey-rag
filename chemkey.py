@@ -30,6 +30,7 @@ RDLogger.DisableLog("rdApp.*")
 PUBCHEM_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/{prop}/TXT"
 PUBCHEM_DELAY_SECONDS = 0.25  # PubChem asks for <= 5 requests/second
 MIN_HEAVY_ATOMS = 3           # drop water, counter-ions and lexical noise
+MAX_TABLE_NAMES = 25          # per OCR'd table; OCR artifacts are not worth a lookup
 
 
 # --------------------------------------------------------------------------
@@ -400,14 +401,21 @@ def attach_image_structures(index, report):
     return index
 
 
-def table_rows_to_text(cells):
-    """Flatten a recovered grid to searchable text, one row per line."""
-    return "\n".join(
-        " | ".join(value for value in row if value.strip()) for row in cells or []
-    ).strip()
+def table_rows_to_text(cells, spanning_rows=None):
+    """Flatten a recovered grid to searchable text, one row per line.
+
+    Empty cells keep their position. Dropping them would shift every later
+    value one column left, so the passage would assert a pairing the table
+    never made - the same invention the OCR gate exists to prevent.
+    """
+    spanning = set(spanning_rows or [])
+    lines = []
+    for number, row in enumerate(cells or []):
+        lines.append(row[0] if number in spanning else " | ".join(row))
+    return "\n".join(lines).strip()
 
 
-def attach_image_tables(index, report, resolver=None):
+def attach_image_tables(index, report, resolver=None, max_names=MAX_TABLE_NAMES):
     """Add accepted OCR'd tables as retrievable passages; keep every candidate.
 
     An accepted grid is OCR output, not a transcription anyone checked: the
@@ -424,10 +432,14 @@ def attach_image_tables(index, report, resolver=None):
     ]
     compounds = index.setdefault("compounds", {})
     for record in accepted:
-        body = table_rows_to_text(record["cells"])
+        body = table_rows_to_text(record["cells"], record.get("spanning_rows"))
         names = []
         if resolver is not None:
-            for name in candidate_names(body, vocab=resolver.lexicon):
+            # OCR text carries artifacts ("cm\"!", "Ist der"); resolving every
+            # one of them would mean an uncapped run of PubChem lookups whose
+            # misses are cached. build_index caps by frequency; cap here too.
+            found = sorted(candidate_names(body, vocab=resolver.lexicon))
+            for name in found[:max_names]:
                 if name not in compounds:
                     smiles = resolver.resolve(name)
                     full_key, block = to_inchikey(smiles)

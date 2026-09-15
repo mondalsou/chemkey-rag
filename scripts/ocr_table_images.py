@@ -283,6 +283,10 @@ def recover_grid(words, min_rows=MIN_ROWS, min_cols=MIN_COLS):
         "n_cols": n_cols,
         "cells": cells,
         "fill_fraction": filled / total if total else 0.0,
+        # Spanning rows are excluded from fill, so fill alone can read 1.0 on a
+        # table most of whose rows were dumped whole into column 0. Report the
+        # collapsed share next to it rather than hiding it.
+        "spanning_fraction": len(spanning_rows) / n_rows,
         "column_boundaries": [round(edge, 1) for edge in boundaries],
         "spanning_rows": spanning_rows,
     }
@@ -299,6 +303,8 @@ def _refused(reason, mean_conf=None, raw_text=None):
         "n_cols": None,
         "column_boundaries": None,
         "spanning_rows": None,
+        "fill_fraction": None,
+        "spanning_fraction": None,
     }
 
 
@@ -325,6 +331,8 @@ def decide_ocr_result(words, confidence_threshold=CONFIDENCE_THRESHOLD):
         "n_cols": grid["n_cols"],
         "column_boundaries": grid["column_boundaries"],
         "spanning_rows": grid["spanning_rows"],
+        "fill_fraction": grid["fill_fraction"],
+        "spanning_fraction": grid["spanning_fraction"],
     }
 
 
@@ -406,9 +414,9 @@ def ocr_table_record(rec, papers_dir, ocr_fn=ocr_image_to_data, crops_dir=None):
         )
     if pil is None:
         return {**base, **_refused("decode_failed")}
-    if crops_dir:
-        base["image_path"] = _save_crop(pil, crops_dir, base["id"])
     try:
+        if crops_dir:
+            base["image_path"] = _save_crop(pil, crops_dir, base["id"])
         data = ocr_fn(pil)
         words = words_from_tesseract_data(data)
         decided = decide_ocr_result(words)
@@ -465,18 +473,19 @@ def build_table_ocr(
         },
         "tables": rows,
         "notes": (
-            "Image-table OCR sidecar. Native pypdf page.extract_text() is unchanged. "
+            "Image-table OCR. Native pypdf page.extract_text() is unchanged. "
             "Thin MDPI v2 table-rule strips are skipped. Low Tesseract confidence or "
             "an unrecovered grid is a refusal, not a guessed table. No page text from "
             "paper C is written to a committed file. Structure drawings are not OCR'd. "
-            "Not wired into default ingest."
+            "Off by default; under build_index.py --image-tables an accepted grid "
+            "becomes one indexed passage. Refused rasters are never indexed."
         ),
     }
 
 
 def print_summary(summary, file=sys.stdout):
     counts = summary["counts"]
-    print("Image-table OCR (sidecar; search index unchanged)", file=file)
+    print("Image-table OCR (accepted grids are indexed by --image-tables)", file=file)
     print(f"  table_image candidates: {counts['table_image_candidates']}", file=file)
     print(f"  skipped thin table rules: {counts['skipped_thin_table_rule']}", file=file)
     print(f"  skipped not table-like: {counts['skipped_not_table_like']}", file=file)
@@ -514,7 +523,10 @@ def run_table_ocr(
     if inventory is None:
         return None
     summary = build_table_ocr(
-        inventory, papers_dir, ocr_fn=ocr_fn, crops_dir=crops_dir
+        inventory,
+        papers_dir,
+        ocr_fn=ocr_fn,
+        crops_dir=None if dry_run else crops_dir,
     )
     if not dry_run:
         write_table_ocr(summary, out_path)
