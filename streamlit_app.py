@@ -118,8 +118,10 @@ h3 {font-size:15px!important;line-height:1.3;letter-spacing:0;}
 [data-baseweb="tab-highlight"] {background:var(--ink);height:2px;}
 
 /* --- controls: accent lives on the button, nowhere else --- */
-.stButton>button,.stDownloadButton>button {background:var(--accent);color:#fffdf6;border:1px solid var(--accent);border-radius:999px;padding:9px 24px;font-weight:500;}
-.stButton>button:hover,.stDownloadButton>button:hover {background:var(--accent-deep);border-color:var(--accent-deep);color:#fff;}
+.stButton>button,.stDownloadButton>button {background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:9px 24px;font-weight:500;}
+.stButton>button:hover,.stDownloadButton>button:hover {border-color:var(--ink);color:var(--ink);background:var(--surface);}
+.stDownloadButton>button,[data-testid="stBaseButton-primary"] {background:var(--accent)!important;color:#fffdf6!important;border-color:var(--accent)!important;}
+.stDownloadButton>button:hover,[data-testid="stBaseButton-primary"]:hover {background:var(--accent-deep)!important;border-color:var(--accent-deep)!important;color:#fff!important;}
 [data-testid="stTextInput"] input {font-size:14px;color:var(--ink);}
 [data-testid="stTextInput"] [data-baseweb="input"], [data-baseweb="select"]>div {background:var(--paper);border-color:var(--line);border-radius:var(--r-md);}
 [data-testid="stCaptionContainer"] {color:var(--muted);font-size:11.5px;}
@@ -167,6 +169,16 @@ h3 {font-size:15px!important;line-height:1.3;letter-spacing:0;}
 .ck-recovery {color:var(--muted);font-size:12px;margin:15px 0;}
 .ck-recovery strong {font:500 30px/1 var(--serif);color:var(--accent);margin-right:5px;}
 @media(max-width:700px) {.block-container{padding:24px 16px;}.ck-hero-title{font-size:34px;}.ck-topbar{gap:15px;font-size:9px;}[data-baseweb="tab-list"]{gap:16px;margin-top:32px;}.ck-mol{padding:16px;}}
+
+/* --- review surfaces: alerts, code and retained crops --- */
+[data-testid="stImage"] img {max-height:320px;width:auto!important;border-radius:var(--r-sm);border:1px solid var(--line-soft);}
+[data-testid="stAlert"] {border-radius:var(--r-md);border:1px solid var(--line);font-size:13px;}
+[data-testid="stAlertContentSuccess"] {background:#e8efe6;color:var(--ink);}
+[data-testid="stAlertContentWarning"] {background:var(--sunken);color:var(--ink);}
+[data-testid="stAlertContentInfo"] {background:var(--surface);color:var(--body);}
+[data-testid="stAlert"] [data-testid="stMarkdownContainer"] p {color:inherit;}
+[data-testid="stCode"], pre, code {background:var(--sunken)!important;border-radius:var(--r-sm);}
+[data-testid="stCode"] code, pre code {font:400 12.5px var(--mono)!important;color:var(--ink)!important;}
 </style>
 """
 
@@ -211,7 +223,10 @@ def depict(smiles, size=(300, 190)):
     rdMolDraw2D.PrepareAndDrawMolecule(drawer, mol)
     drawer.FinishDrawing()
     # RDKit emits an XML prolog; it renders as stray text when inlined into HTML.
-    return re.sub(r"^<\?xml[^>]*\?>\s*", "", drawer.GetDrawingText())
+    svg = re.sub(r"^<\?xml[^>]*\?>\s*", "", drawer.GetDrawingText())
+    # ...and a multi-line, indented body, which st.markdown parses as a code
+    # block unless it is wrapped in a block-level tag. One line is safe anywhere.
+    return re.sub(r"\s*\n\s*", " ", svg).strip()
 
 
 def spellings_for_block(index, block):
