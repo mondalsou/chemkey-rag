@@ -357,14 +357,26 @@ def render_ocr_candidates(records, limit=24):
                 unsafe_allow_html=True,
             )
             image_path = record.get("image_path")
-            if image_path and Path(image_path).exists():
-                st.image(image_path, caption="Retained source crop", use_container_width=True)
-            else:
-                st.caption("The local source crop is not available in this deployment.")
             if record.get("status") == "accepted":
+                source_col, reconstructed_col = st.columns(2, gap="large")
+                with source_col:
+                    st.markdown("**Retained source crop**")
+                    if image_path and Path(image_path).exists():
+                        st.image(image_path, use_container_width=True)
+                    else:
+                        st.caption("The local source crop is not available in this deployment.")
+                with reconstructed_col:
+                    st.markdown("**Recognised connectivity**")
+                    svg = depict(record.get("smiles", ""), (360, 220))
+                    if svg:
+                        st.markdown(svg, unsafe_allow_html=True)
                 st.success("Accepted: RDKit parsed the predicted structure.")
                 st.code(record.get("smiles", ""), language=None)
             else:
+                if image_path and Path(image_path).exists():
+                    st.image(image_path, caption="Retained source crop", use_container_width=True)
+                else:
+                    st.caption("The local source crop is not available in this deployment.")
                 reason = record.get("reason", "not accepted")
                 st.warning(f"Refused: {reason}. This crop is not searchable.")
                 if record.get("predicted_smiles"):

@@ -13,4 +13,5 @@ data/table_ocr.json
 data/structure_ocr.json
 data/extracted_images/
 data/extracted_structures/
+data/ocr_demo/
 .venv-ocsr/
