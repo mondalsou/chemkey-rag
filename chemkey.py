@@ -387,6 +387,12 @@ def attach_image_structures(index, report):
         )
     index["chunks"] = chunks
     index["image_structures"] = structures
+    # Keep every processed crop in the local index for visual audit. Rejected
+    # candidates never receive a retrieval anchor and are never returned by
+    # structure search.
+    index["structure_ocr_candidates"] = [
+        dict(record) for record in report.get("structures", [])
+    ]
     index["structure_ocr"] = {
         key: report.get(key)
         for key in ("pipeline", "source_mode", "recognizer", "segmenter", "counts")

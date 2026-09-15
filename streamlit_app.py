@@ -342,6 +342,37 @@ def render_image_structures(records):
             )
 
 
+def render_ocr_candidates(records, limit=24):
+    """Show local crop evidence for accepted and refused OCSR candidates."""
+    if not records:
+        st.info("No structure-image candidates were retained in this index.")
+        return
+    shown = records[:limit]
+    for record in shown:
+        with st.container(border=True):
+            st.markdown(
+                f"<div class='ck-meta'>{html.escape(record.get('source_doc', 'unknown source'))} "
+                f"&nbsp;·&nbsp; PAGE {record.get('page_number', '?')} &nbsp;·&nbsp; "
+                f"{html.escape(record.get('source_kind', 'image')).upper()}</div>",
+                unsafe_allow_html=True,
+            )
+            image_path = record.get("image_path")
+            if image_path and Path(image_path).exists():
+                st.image(image_path, caption="Retained source crop", use_container_width=True)
+            else:
+                st.caption("The local source crop is not available in this deployment.")
+            if record.get("status") == "accepted":
+                st.success("Accepted: RDKit parsed the predicted structure.")
+                st.code(record.get("smiles", ""), language=None)
+            else:
+                reason = record.get("reason", "not accepted")
+                st.warning(f"Refused: {reason}. This crop is not searchable.")
+                if record.get("predicted_smiles"):
+                    st.code(record["predicted_smiles"], language=None)
+    if len(records) > len(shown):
+        st.caption(f"Showing {len(shown)} of {len(records)} retained candidates.")
+
+
 # --------------------------------------------------------------------------
 
 def main():
@@ -461,6 +492,7 @@ def main():
         report = index.get("structure_ocr") or {}
         counts = report.get("counts") or {}
         accepted_records = index.get("image_structures") or []
+        candidates = index.get("structure_ocr_candidates") or accepted_records
         m1, m2, m3 = st.columns(3)
         m1.metric("Candidate crops", counts.get("crops", 0))
         m2.metric("RDKit-valid", counts.get("accepted", len(accepted_records)))
@@ -473,7 +505,8 @@ def main():
             )
         else:
             st.caption("This index was built without the optional structure-image pipeline.")
-        render_image_structures(image_structures_for_block(index, block))
+        st.markdown("**Retained crop review**")
+        render_ocr_candidates(candidates)
     with compare_tab:
         st.subheader("What does structure actually add?")
         reach = reach_report(INDEX_PATH, mtime, block, text_query if mode == "Chemical name" else "")

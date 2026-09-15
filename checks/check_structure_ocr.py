@@ -82,6 +82,8 @@ index = {
 }
 ck.attach_image_structures(index, report)
 assert len(index["image_structures"]) == 1
+assert len(index["structure_ocr_candidates"]) == 2
+assert index["structure_ocr_candidates"][1]["status"] == "refused"
 assert len(ck.image_structures_for_block(index, record["block"])) == 1
 hits, block = ck.structure_search(paracetamol, index)
 assert block == record["block"] and hits
