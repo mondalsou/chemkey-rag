@@ -70,63 +70,75 @@ PRESET_QUESTIONS = [
 
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-:root {--ink:#f3e8dc;--muted:#b0a1ab;--coral:#ef8874;}
-.stApp {background:radial-gradient(ellipse at 83% 14%,#321924 0,transparent 36%),#100e16;color:var(--ink);font-family:'DM Sans',sans-serif;}
-.block-container {padding-top:2rem;max-width:1500px;padding-bottom:4rem;}
-h1,h2,h3 {color:var(--ink);font-family:'Plus Jakarta Sans','DM Sans',sans-serif!important;font-weight:500!important;letter-spacing:-.035em;}
-h3 {font-size:1.35rem!important;}
-[data-testid="stHeader"] {background:#100e16d9;}
-[data-testid="stSidebar"] {background:#141119;border-right:1px solid #34252f;}
+@import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&display=swap');
+/* Palette read off the Peptide/SuLA shot: warm near-white ground, near-black
+   display serif, desaturated sage and blush off the bottles. Every colour in
+   this file comes from these tokens - swapping a theme means editing here. */
+:root {
+  --paper:#f4f3f1; --surface:#ffffff; --surface-2:#eceae6;
+  --line:#dedbd6; --line-soft:#e8e5e1;
+  --ink:#16161a; --body:#3d3d42; --muted:#8b8a88; --faint:#a8a6a3;
+  --sage:#6f8674; --sage-soft:#c8d4ca; --sage-wash:#eef2ee;
+  --blush:#b07f76; --blush-soft:#e8d3ce; --blush-wash:#f7efec;
+  --cream:#e6ded1;
+  --serif:'Playfair Display',Georgia,serif;
+  --sans:'Jost','DM Sans',system-ui,sans-serif;
+}
+.stApp {background:radial-gradient(ellipse at 62% -8%,#ffffff 0,transparent 52%),var(--paper);color:var(--body);font-family:var(--sans);}
+.block-container {padding-top:2.4rem;max-width:1500px;padding-bottom:5rem;}
+h1,h2,h3 {color:var(--ink);font-family:var(--serif)!important;font-weight:500!important;letter-spacing:-.015em;}
+h3 {font-size:1.4rem!important;}
+[data-testid="stHeader"] {background:#f4f3f1d9;}
+[data-testid="stSidebar"] {background:var(--surface);border-right:1px solid var(--line);}
 [data-testid="stSidebar"] .block-container {padding-top:2rem;}
-[data-testid="stMetric"] {background:linear-gradient(140deg,#241923,#16131c);border:1px solid #3b2c37;border-radius:15px;padding:18px 20px;min-height:118px;}
-[data-testid="stMetricValue"] {font-family:'Plus Jakarta Sans','DM Sans',sans-serif;font-size:2.3rem;color:#efbe94;}
-[data-testid="stMetricLabel"] {color:#beadb5;font-size:.8rem;}
-[data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:16px!important;}
-[data-testid="stExpander"] {background:#19141e;border-color:#3a2a35;}
-[data-baseweb="tab-list"] {gap:28px;border-bottom:1px solid #3b2c37;margin:18px 0 24px;}
-[data-baseweb="tab"] {padding:12px 0;font-size:13px;color:#b9a9b3;}
-[data-baseweb="tab"][aria-selected="true"] {color:#f3e8dc;}
-[data-baseweb="tab-highlight"] {background:#ef8874;}
-.stButton>button,.stDownloadButton>button {background:linear-gradient(120deg,#b63f35,#82342f);color:#fff0e6;border:1px solid #c56652;border-radius:24px;padding:8px 20px;}
-.stButton>button:hover,.stDownloadButton>button:hover {border-color:#ffd1a8;color:white;background:#ad493e;}
-[data-testid="stTextInput"] input {font-size:14px;color:#f3e8dc;}
-[data-testid="stTextInput"] [data-baseweb="input"], [data-baseweb="select"]>div {background:#211a25;border-color:#45323e;border-radius:10px;}
-[data-testid="stCaptionContainer"] {color:#b0a1ab;}
-.ck-brand {font:32px 'Plus Jakarta Sans','DM Sans',sans-serif;letter-spacing:-1px;margin-bottom:8px;color:#f3e8dc;}
-.ck-brand span {color:#ef8874;}
-.ck-eyebrow {font-size:10px;font-weight:600;letter-spacing:2px;color:#dfad91;text-transform:uppercase;margin:8px 0 20px;}
-.ck-sub {color:#bdafb7;font-size:14px;line-height:1.85;max-width:540px;margin:20px 0;}
-.ck-key {font:500 13px ui-monospace,monospace;letter-spacing:1px;margin:10px 0;color:#f1c49e;}
-.ck-mol {position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,#65362f55,transparent 63%),linear-gradient(145deg,#241822,#15111c);border:1px solid #52323f;border-radius:20px;text-align:center;padding:24px 15px;box-shadow:0 18px 60px #0003;}
-.ck-mol:before {content:'';position:absolute;inset:14px;border:1px solid #cb826025;border-radius:50%;z-index:-1;transform:rotate(-25deg) scale(.84);}
-.ck-mol svg {width:100%;height:auto;max-width:370px;filter:drop-shadow(0 0 14px #ed9a6633);}
-.ck-pill {display:inline-block;padding:4px 10px;margin:3px 5px 3px 0;border:1px solid #49313d;border-radius:20px;font-size:11px;background:#2b1c27;color:#deb8ac;}
-.ck-snip {font-size:14px;line-height:1.9;color:#d0c2c8;margin:14px 0;}
-.ck-snip mark {background:#91653b;color:#fff3d9;}
-.ck-meta {font-size:10px;color:#b7a4ae;letter-spacing:.8px;}
+[data-testid="stMetric"] {background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px 22px;min-height:118px;}
+[data-testid="stMetricValue"] {font-family:var(--serif);font-weight:500;font-size:2.5rem;color:var(--ink);}
+[data-testid="stMetricLabel"] {color:var(--muted);font-size:.78rem;letter-spacing:.04em;}
+[data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:20px!important;}
+[data-testid="stExpander"] {background:var(--surface);border-color:var(--line);}
+[data-baseweb="tab-list"] {gap:30px;border-bottom:1px solid var(--line);margin:18px 0 26px;}
+[data-baseweb="tab"] {padding:12px 0;font-size:13px;color:var(--muted);letter-spacing:.01em;}
+[data-baseweb="tab"][aria-selected="true"] {color:var(--ink);}
+[data-baseweb="tab-highlight"] {background:var(--sage);}
+.stButton>button,.stDownloadButton>button {background:var(--ink);color:#f7f6f4;border:1px solid var(--ink);border-radius:18px;padding:9px 22px;font-family:var(--sans);font-weight:400;letter-spacing:.01em;}
+.stButton>button:hover,.stDownloadButton>button:hover {background:var(--sage);border-color:var(--sage);color:#fff;}
+[data-testid="stTextInput"] input {font-size:14px;color:var(--ink);}
+[data-testid="stTextInput"] [data-baseweb="input"], [data-baseweb="select"]>div {background:var(--surface);border-color:var(--line);border-radius:12px;}
+[data-testid="stCaptionContainer"] {color:var(--muted);}
+.ck-brand {font:500 34px var(--serif);letter-spacing:-.5px;margin-bottom:8px;color:var(--ink);}
+.ck-brand span {color:var(--sage);font-size:18px;vertical-align:14px;margin-left:3px;}
+.ck-eyebrow {font-size:10px;font-weight:500;letter-spacing:2.2px;color:var(--muted);text-transform:uppercase;margin:8px 0 20px;}
+.ck-sub {color:var(--body);font-size:14px;line-height:1.9;max-width:540px;margin:20px 0;}
+.ck-key {font:400 13px ui-monospace,monospace;letter-spacing:1px;margin:10px 0;color:var(--sage);}
+.ck-mol {position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#ffffff 0,var(--sage-wash) 72%);border:1px solid var(--line);border-radius:22px;text-align:center;padding:26px 15px;box-shadow:0 14px 44px #1616180c;}
+.ck-mol:before {content:'';position:absolute;inset:14px;border:1px solid var(--sage-soft);border-radius:50%;z-index:-1;transform:rotate(-25deg) scale(.84);}
+.ck-mol svg {width:100%;height:auto;max-width:370px;}
+.ck-pill {display:inline-block;padding:4px 11px;margin:3px 5px 3px 0;border:1px solid var(--line);border-radius:20px;font-size:11px;background:var(--surface);color:var(--body);}
+.ck-snip {font-size:14px;line-height:1.95;color:var(--body);margin:14px 0;}
+.ck-snip mark {background:var(--cream);color:var(--ink);}
+.ck-meta {font-size:10px;color:var(--faint);letter-spacing:.8px;}
 .ck-grid {overflow-x:auto;margin:10px 0;}
-.ck-grid table {border-collapse:collapse;font-size:12px;color:#d9c8d2;width:100%;}
-.ck-grid th, .ck-grid td {border:1px solid #3a2934;padding:5px 9px;text-align:left;vertical-align:top;}
-.ck-grid th {color:#f0e2ea;font-weight:600;background:#2a1f27;}
-.ck-grid em {color:#b7a4ae;font-style:italic;}
-.ck-status {font-size:11px;color:#bdd1aa;border:1px solid #526044;background:#26302266;padding:8px 13px;border-radius:20px;display:inline-block;}
-.ck-paper {padding:16px 0;border-bottom:1px solid #342631;font-size:12px;line-height:1.8;color:#c2afb9;}
-.ck-topbar {display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3a2934;padding-bottom:18px;margin-bottom:32px;color:#c4afb9;font-size:11px;letter-spacing:1px;}
-.ck-topbar strong {color:#efd5c2;letter-spacing:2px;font-weight:500;}
-.ck-hero-title {font:clamp(30px,3.3vw,46px)/1.25 'Plus Jakarta Sans','DM Sans',sans-serif;color:#f4e9dd;letter-spacing:-1.5px;margin:12px 0 22px;}
-.ck-hero-title em {color:#ec8e7b;font-weight:500;font-style:normal;}
-.ck-hero-note {font-size:11px;color:#c2a7a8;border-left:2px solid #b86551;padding-left:12px;margin:24px 0 10px;}
-[data-testid="stChatMessage"] {background:#201923;border:1px solid #44303c;border-radius:14px;}
-.ck-name-row {display:grid;grid-template-columns:1fr auto;gap:5px 15px;margin:13px 0;font-size:13px;color:#d0c2c8;}
-.ck-name-row.selected {color:#f3c5b6;}
-.ck-name-row small {font-size:8px;letter-spacing:1px;color:#efa88e;margin-left:6px;}
-.ck-name-row b {font-weight:500;color:#efbe94;}
-.ck-name-track {grid-column:1/-1;height:3px;background:#332431;border-radius:3px;overflow:hidden;}
-.ck-name-track i {display:block;height:100%;background:#bb7466;border-radius:3px;}
-.ck-recovery {color:#c3b4bc;font-size:12px;margin:15px 0;}
-.ck-recovery strong {color:#c3d2ad;font-size:24px;margin-right:5px;}
-@media(max-width:700px) {.block-container{padding:1.4rem 1rem;}.ck-hero-title{font-size:44px;}.ck-topbar{gap:15px;font-size:9px;}[data-baseweb="tab-list"]{gap:15px;}.ck-mol{padding:15px;}}
+.ck-grid table {border-collapse:collapse;font-size:12px;color:var(--body);width:100%;}
+.ck-grid th, .ck-grid td {border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top;}
+.ck-grid th {color:var(--ink);font-weight:500;background:var(--surface-2);}
+.ck-grid em {color:var(--muted);font-style:italic;}
+.ck-status {font-size:11px;color:var(--sage);border:1px solid var(--sage-soft);background:var(--sage-wash);padding:8px 13px;border-radius:20px;display:inline-block;}
+.ck-paper {padding:16px 0;border-bottom:1px solid var(--line-soft);font-size:12px;line-height:1.85;color:var(--body);}
+.ck-topbar {display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:34px;color:var(--muted);font-size:11px;letter-spacing:1px;}
+.ck-topbar strong {color:var(--ink);letter-spacing:2px;font-weight:500;}
+.ck-hero-title {font:500 clamp(34px,3.8vw,54px)/1.16 var(--serif);color:var(--ink);letter-spacing:-.8px;margin:12px 0 22px;}
+.ck-hero-title em {color:var(--sage);font-weight:500;font-style:normal;}
+.ck-hero-note {font-size:11px;color:var(--muted);border-left:2px solid var(--sage-soft);padding-left:12px;margin:24px 0 10px;}
+[data-testid="stChatMessage"] {background:var(--surface);border:1px solid var(--line);border-radius:18px;}
+.ck-name-row {display:grid;grid-template-columns:1fr auto;gap:5px 15px;margin:13px 0;font-size:13px;color:var(--body);}
+.ck-name-row.selected {color:var(--ink);}
+.ck-name-row small {font-size:8px;letter-spacing:1px;color:var(--blush);margin-left:6px;}
+.ck-name-row b {font-weight:500;color:var(--ink);}
+.ck-name-track {grid-column:1/-1;height:3px;background:var(--surface-2);border-radius:3px;overflow:hidden;}
+.ck-name-track i {display:block;height:100%;background:var(--sage);border-radius:3px;}
+.ck-recovery {color:var(--muted);font-size:12px;margin:15px 0;}
+.ck-recovery strong {color:var(--ink);font-family:var(--serif);font-size:26px;margin-right:5px;}
+@media(max-width:700px) {.block-container{padding:1.4rem 1rem;}.ck-hero-title{font-size:38px;}.ck-topbar{gap:15px;font-size:9px;}[data-baseweb="tab-list"]{gap:15px;}.ck-mol{padding:15px;}}
 </style>
 """
 
@@ -161,8 +173,10 @@ def depict(smiles, size=(300, 190)):
     drawer = rdMolDraw2D.MolDraw2DSVG(*size)
     drawer.drawOptions().clearBackground = False
     drawer.drawOptions().useBWAtomPalette()
-    drawer.drawOptions().setAtomPalette({-1: (0.95, 0.83, 0.72), 7: (0.70, 0.78, 0.61), 8: (0.94, 0.49, 0.40)})
-    drawer.drawOptions().setSymbolColour((0.95, 0.83, 0.72))
+    # Ink on paper, with sage for N and blush for O - the same two accents the
+    # stylesheet uses, so a molecule reads as part of the page.
+    drawer.drawOptions().setAtomPalette({-1: (0.09, 0.09, 0.10), 7: (0.44, 0.53, 0.45), 8: (0.69, 0.50, 0.46)})
+    drawer.drawOptions().setSymbolColour((0.09, 0.09, 0.10))
     drawer.drawOptions().bondLineWidth = 2
     rdMolDraw2D.PrepareAndDrawMolecule(drawer, mol)
     drawer.FinishDrawing()
@@ -469,7 +483,7 @@ def main():
     chunks = index["chunks"]
     documents = sorted({c["source_doc"] for c in chunks})
     with st.sidebar:
-        st.markdown("<div class='ck-brand'>⌬ ChemKey<span>.</span></div>", unsafe_allow_html=True)
+        st.markdown("<div class='ck-brand'>⌬ ChemKey<span>&#10022;</span></div>", unsafe_allow_html=True)
         st.caption("THE CHEMISTRY RESEARCH WORKSPACE")
         st.divider()
         st.markdown("**Your library**")
