@@ -7,7 +7,8 @@ Takes inventory rows labeled table_image. SKIPS MDPI v2 thin table-rule rasters
 (~1601x5). Runs Tesseract only on remaining table-like rasters — never on
 structure drawings. REFUSES when mean word confidence is below
 CONFIDENCE_THRESHOLD or a row/column grid cannot be recovered. Never invents
-cell values.
+cell values. Column edges are voted on by row, so a full-width caption or a
+centred header cannot collapse the table into a single column.
 
 Writes gitignored data/table_ocr.json. Does not mutate data/index.json.
 Optional ingest flag --image-tables on build_index.py is OFF by default and
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 from collections import Counter
@@ -44,6 +46,12 @@ MIN_OCR_WIDTH = 120
 MIN_OCR_HEIGHT = 40
 TESSERACT_PSM = 6  # uniform block of text; layout comes from word boxes
 WORD_LEVEL = 5
+
+# Column recovery. Scales are multiples of the median word height, i.e. of the
+# body font size, so they hold at any raster DPI.
+COLUMN_GAP_SCALE = 1.5     # a gutter is a within-row gap this much wider than a line
+COLUMN_MERGE_SCALE = 1.0   # gutters this close in x are the same column edge
+COLUMN_SUPPORT_FRACTION = 1.0 / 3.0  # rows that must agree before an edge is real
 
 
 def tesseract_available():
@@ -165,55 +173,121 @@ def raw_text_from_words(words):
     return "\n".join(lines)
 
 
+def _row_gap_midpoints(row, min_gap):
+    """Midpoints of the within-row horizontal gaps wide enough to be gutters."""
+    ordered = sorted(row, key=lambda w: w["left"])
+    right = ordered[0]["left"] + ordered[0]["width"]
+    mids = []
+    for word in ordered[1:]:
+        if word["left"] - right >= min_gap:
+            mids.append((right + word["left"]) / 2.0)
+        right = max(right, word["left"] + word["width"])
+    return mids
+
+
+def column_boundaries(row_groups, min_gap, tolerance, min_support):
+    """x positions where enough rows independently show a gutter.
+
+    Voting per row, rather than projecting the whole raster onto x, is what
+    makes this survive a table whose caption or centred header straddles the
+    columns: those rows simply cast no vote the data rows agree with. A single
+    chain of overlapping word boxes used to collapse every column into one.
+    """
+    votes = [
+        {"x": mid, "row": index}
+        for index, row in enumerate(row_groups)
+        for mid in _row_gap_midpoints(row, min_gap)
+    ]
+    boundaries = []
+    for cluster in _cluster_1d(votes, lambda v: v["x"], tolerance):
+        if len({v["row"] for v in cluster}) >= min_support:
+            boundaries.append(_median([v["x"] for v in cluster]))
+    return boundaries
+
+
+def _column_of(word, boundaries):
+    center = word["left"] + word["width"] / 2.0
+    return sum(1 for edge in boundaries if center > edge)
+
+
+def _is_spanning_row(row, boundaries):
+    """True when a word sits across every column edge: a caption, not a data row."""
+    return all(
+        any(w["left"] < edge < w["left"] + w["width"] for w in row)
+        for edge in boundaries
+    )
+
+
 def recover_grid(words, min_rows=MIN_ROWS, min_cols=MIN_COLS):
     """Cluster word boxes into a rectangular grid, or None.
 
     Empty cells stay empty strings. Never fills a cell that had no OCR token.
+    A row spanning every column edge is kept whole in its first cell rather
+    than chopped at edges it does not obey.
     """
     if not words:
         return None
-    heights = [w["height"] for w in words]
-    widths = [w["width"] for w in words]
-    row_gap = max(8.0, _median(heights) * 0.7)
-    col_gap = max(12.0, _median(widths) * 0.9)
+    line_height = _median([w["height"] for w in words])
     row_groups = _cluster_1d(
-        words, lambda w: w["top"] + w["height"] / 2.0, row_gap
-    )
-    col_groups = _cluster_1d(
-        words, lambda w: w["left"] + w["width"] / 2.0, col_gap
+        words,
+        lambda w: w["top"] + w["height"] / 2.0,
+        max(8.0, line_height * 0.7),
     )
     n_rows = len(row_groups)
-    n_cols = len(col_groups)
-    if n_rows < min_rows or n_cols < min_cols:
+    if n_rows < min_rows:
         return None
-
-    def _index_of(item, groups):
-        item_id = id(item)
-        for i, group in enumerate(groups):
-            if any(id(member) == item_id for member in group):
-                return i
+    boundaries = column_boundaries(
+        row_groups,
+        min_gap=max(12.0, line_height * COLUMN_GAP_SCALE),
+        tolerance=max(8.0, line_height * COLUMN_MERGE_SCALE),
+        min_support=max(2, math.ceil(n_rows * COLUMN_SUPPORT_FRACTION)),
+    )
+    n_cols = len(boundaries) + 1
+    if n_cols < min_cols:
         return None
 
     cells = [["" for _ in range(n_cols)] for _ in range(n_rows)]
-    occupants = [[[] for _ in range(n_cols)] for _ in range(n_rows)]
-    for word in words:
-        r = _index_of(word, row_groups)
-        c = _index_of(word, col_groups)
-        if r is None or c is None:
-            return None
-        occupants[r][c].append(word)
-    for r in range(n_rows):
-        for c in range(n_cols):
-            pieces = sorted(occupants[r][c], key=lambda w: w["left"])
-            cells[r][c] = " ".join(w["text"] for w in pieces)
-    filled = sum(1 for row in cells for value in row if value.strip())
-    total = n_rows * n_cols
-    fill = filled / total if total else 0.0
+    spanning_rows = []
+    for r, row in enumerate(row_groups):
+        ordered = sorted(row, key=lambda w: w["left"])
+        if _is_spanning_row(row, boundaries):
+            spanning_rows.append(r)
+            cells[r][0] = " ".join(w["text"] for w in ordered)
+            continue
+        buckets = [[] for _ in range(n_cols)]
+        for word in ordered:
+            buckets[_column_of(word, boundaries)].append(word["text"])
+        for c, pieces in enumerate(buckets):
+            cells[r][c] = " ".join(pieces)
+
+    # Fill is measured over the tabular rows only: a caption legitimately
+    # occupies one cell, so counting its blanks would punish real tables.
+    tabular = [r for r in range(n_rows) if r not in spanning_rows]
+    total = len(tabular) * n_cols
+    filled = sum(
+        1 for r in tabular for value in cells[r] if value.strip()
+    )
     return {
         "n_rows": n_rows,
         "n_cols": n_cols,
         "cells": cells,
-        "fill_fraction": fill,
+        "fill_fraction": filled / total if total else 0.0,
+        "column_boundaries": [round(edge, 1) for edge in boundaries],
+        "spanning_rows": spanning_rows,
+    }
+
+
+def _refused(reason, mean_conf=None, raw_text=None):
+    return {
+        "status": "refused",
+        "reason": reason,
+        "mean_confidence": mean_conf,
+        "raw_text": raw_text,
+        "cells": None,
+        "n_rows": None,
+        "n_cols": None,
+        "column_boundaries": None,
+        "spanning_rows": None,
     }
 
 
@@ -222,46 +296,14 @@ def decide_ocr_result(words, confidence_threshold=CONFIDENCE_THRESHOLD):
     mean_conf = mean_word_confidence(words)
     raw = raw_text_from_words(words)
     if not words:
-        return {
-            "status": "refused",
-            "reason": "no_text",
-            "mean_confidence": mean_conf,
-            "raw_text": "",
-            "cells": None,
-            "n_rows": None,
-            "n_cols": None,
-        }
+        return _refused("no_text", mean_conf, "")
     if mean_conf is None or mean_conf < confidence_threshold:
-        return {
-            "status": "refused",
-            "reason": "low_confidence",
-            "mean_confidence": mean_conf,
-            "raw_text": raw,
-            "cells": None,
-            "n_rows": None,
-            "n_cols": None,
-        }
+        return _refused("low_confidence", mean_conf, raw)
     grid = recover_grid(words)
     if grid is None:
-        return {
-            "status": "refused",
-            "reason": "grid_not_recovered",
-            "mean_confidence": mean_conf,
-            "raw_text": raw,
-            "cells": None,
-            "n_rows": None,
-            "n_cols": None,
-        }
+        return _refused("grid_not_recovered", mean_conf, raw)
     if grid["fill_fraction"] < MIN_FILL_FRACTION:
-        return {
-            "status": "refused",
-            "reason": "sparse_grid",
-            "mean_confidence": mean_conf,
-            "raw_text": raw,
-            "cells": None,
-            "n_rows": None,
-            "n_cols": None,
-        }
+        return _refused("sparse_grid", mean_conf, raw)
     return {
         "status": "accepted",
         "reason": None,
@@ -270,6 +312,8 @@ def decide_ocr_result(words, confidence_threshold=CONFIDENCE_THRESHOLD):
         "cells": grid["cells"],
         "n_rows": grid["n_rows"],
         "n_cols": grid["n_cols"],
+        "column_boundaries": grid["column_boundaries"],
+        "spanning_rows": grid["spanning_rows"],
     }
 
 
@@ -322,16 +366,7 @@ def ocr_table_record(rec, papers_dir, ocr_fn=ocr_image_to_data):
     }
     reason = skip_reason_for_record(rec)
     if reason:
-        return {
-            **base,
-            "status": "skipped",
-            "reason": reason,
-            "mean_confidence": None,
-            "raw_text": None,
-            "cells": None,
-            "n_rows": None,
-            "n_cols": None,
-        }
+        return {**base, **_refused(reason), "status": "skipped"}
     pdf_path = _pdf_path_for(rec.get("filename") or "", papers_dir)
     pil = None
     if os.path.exists(pdf_path):
@@ -339,30 +374,13 @@ def ocr_table_record(rec, papers_dir, ocr_fn=ocr_image_to_data):
             pdf_path, rec["page"], rec["image_index"]
         )
     if pil is None:
-        return {
-            **base,
-            "status": "refused",
-            "reason": "decode_failed",
-            "mean_confidence": None,
-            "raw_text": None,
-            "cells": None,
-            "n_rows": None,
-            "n_cols": None,
-        }
+        return {**base, **_refused("decode_failed")}
     try:
         data = ocr_fn(pil)
         words = words_from_tesseract_data(data)
         decided = decide_ocr_result(words)
     except Exception as exc:
-        decided = {
-            "status": "refused",
-            "reason": f"ocr_error:{type(exc).__name__}",
-            "mean_confidence": None,
-            "raw_text": None,
-            "cells": None,
-            "n_rows": None,
-            "n_cols": None,
-        }
+        decided = _refused(f"ocr_error:{type(exc).__name__}")
     finally:
         try:
             pil.close()
@@ -392,6 +410,8 @@ def build_table_ocr(inventory, papers_dir, ocr_fn=ocr_image_to_data):
         "min_rows": MIN_ROWS,
         "min_cols": MIN_COLS,
         "min_fill_fraction": MIN_FILL_FRACTION,
+        "column_gap_scale": COLUMN_GAP_SCALE,
+        "column_support_fraction": COLUMN_SUPPORT_FRACTION,
         "tesseract_psm": TESSERACT_PSM,
         "tesseract_version": tesseract_version_string(),
         "papers_dir": papers_dir,

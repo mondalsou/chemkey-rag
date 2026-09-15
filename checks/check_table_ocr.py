@@ -97,13 +97,62 @@ assert accepted["status"] == "accepted", accepted
 assert accepted["cells"] == [["A", "B"], ["1.0", "2.0"]], accepted["cells"]
 assert accepted["n_rows"] == 2 and accepted["n_cols"] == 2
 
-# High confidence but a sparse plot-like grid → refuse, do not publish cells
-sparse = [_word(f"C{i}", 92, 10 + i * 90, 10) for i in range(8)]
+# A plot-like layout: one row of tick labels cannot out-vote the rest, so no
+# column edge reaches the support threshold → refuse, do not publish cells.
+plot_like = [_word(f"C{i}", 92, 10 + i * 90, 10) for i in range(8)]
 for y in (50, 90, 130):
-    sparse.append(_word("x", 91, 10, y))
+    plot_like.append(_word("x", 91, 10, y))
+plot_result = ocr.decide_ocr_result(plot_like)
+assert plot_result["status"] == "refused", plot_result
+assert plot_result["reason"] == "grid_not_recovered"
+assert plot_result["cells"] is None
+
+# Columns are voted on per row, so a full-width caption and a centred header
+# no longer chain every column into one. This is the scanned-table case.
+caption = [
+    _word("Table", 93, 0, 0, width=60),
+    _word("1:", 93, 70, 0, width=80),
+    _word("Current", 93, 160, 0, width=100),
+    _word("layout", 93, 270, 0, width=60),
+    _word("models", 93, 340, 0, width=60),
+    _word("in", 93, 410, 0, width=80),
+    _word("the", 93, 500, 0, width=100),
+]
+header = [
+    _word("Dataset", 93, 0, 40, width=120),
+    _word("Base Model", 93, 180, 40, width=140),
+    _word("Notes", 93, 520, 40, width=100),
+]
+body = []
+for i, y in enumerate((80, 120, 160)):
+    body += [
+        _word(f"Set{i}", 93, 0, y, width=140),
+        _word("F/M", 93, 300, y, width=60),
+        _word(f"Layouts {i}", 93, 520, y, width=180),
+    ]
+table = caption + header + body
+table_result = ocr.decide_ocr_result(table)
+assert table_result["status"] == "accepted", table_result
+assert (table_result["n_rows"], table_result["n_cols"]) == (5, 3), table_result
+assert table_result["spanning_rows"] == [0], table_result["spanning_rows"]
+assert table_result["cells"][0][0] == "Table 1: Current layout models in the"
+assert table_result["cells"][0][1:] == ["", ""], table_result["cells"][0]
+assert table_result["cells"][1] == ["Dataset", "Base Model", "Notes"]
+assert table_result["cells"][2] == ["Set0", "F/M", "Layouts 0"]
+
+# Wide layout, few dense rows: the grid recovers but most cells are empty →
+# refuse rather than publish a mostly-blank table.
+sparse = []
+for r in range(10):
+    for c in range(20):
+        sparse.append(_word(f"v{c}", 92, c * 100, r * 40))
+for r in range(10, 30):
+    sparse.append(_word("y", 92, 0, r * 40))
 sparse_result = ocr.decide_ocr_result(sparse)
-assert sparse_result["status"] == "refused", sparse_result
-assert sparse_result["reason"] == "sparse_grid"
+assert sparse_result["status"] == "refused", (
+    sparse_result["status"], sparse_result["n_rows"], sparse_result["n_cols"]
+)
+assert sparse_result["reason"] == "sparse_grid", sparse_result["reason"]
 assert sparse_result["cells"] is None
 
 # --- mocked OCR path: thin strip still skipped even if an OCR fn is supplied ---

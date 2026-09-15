@@ -35,14 +35,35 @@ rebuilds it) and:
    drawings are not OCR'd (phase 3).
 3. **Extracts** the remaining rasters in memory via pypdf (no image files
    written). Tesseract `--psm 6` plus word bounding boxes recover a grid.
-4. **Refuses** rather than guesses when:
+4. **Recovers columns by row vote.** Each row proposes an edge at the midpoint
+   of every within-row gap wider than 1.5 line heights; edges within one line
+   height of each other are the same column, and an edge is real only once at
+   least a third of the rows (minimum two) propose it. A row with a word across
+   *every* edge is a caption, not a data row: it is kept whole in its first
+   cell and left out of the fill measurement. Projecting the whole raster onto
+   x, or single-linkage clustering of word centres, both fail here — one
+   full-width caption chains every column into one.
+5. **Refuses** rather than guesses when:
    - mean Tesseract **word** confidence &lt; **70** (0–100 scale), or
    - fewer than 2 rows or 2 columns can be clustered from the boxes, or
    - the recovered grid is sparse (fill &lt; 0.40 — typical of plots, not tables), or
    - no tokens, or the raster would not decode.
    Refused records have `cells: null`. Empty cells in an accepted grid stay
    empty strings. Cell values are never invented.
-5. Writes gitignored `data/table_ocr.json`. **Does not mutate** `data/index.json`.
+6. Writes gitignored `data/table_ocr.json`. **Does not mutate** `data/index.json`.
+
+Accepted records carry `column_boundaries` (the voted x edges) and
+`spanning_rows` alongside `cells`, so a reviewer can see why a cell landed
+where it did.
+
+Measured on a rasterised scan of Table 1 from the LayoutParser paper
+(2160x510 px, one page, image-only): 74 words at mean confidence 90.09,
+recovered as a **7x4** grid with edges at x = 386.5, 650.5, 884.0 and row 0
+marked spanning. All five data rows and the header align to the correct
+columns. Before the row vote the same input recovered one column and was
+refused with `grid_not_recovered`. This is a single fixture, not a benchmark:
+tables with no consistent gutter (fully ruled cells, wrapped multi-line cells,
+or rotated scans) are still expected to refuse.
 
 Native/digital tables already come from `page.extract_text()` in
 `chemkey.extract_pdf_chunks`. Phase 2 does not replace that path.

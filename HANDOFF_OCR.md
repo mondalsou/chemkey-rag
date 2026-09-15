@@ -67,14 +67,28 @@ Run:
 PYTHONPATH=. conda run -n chemkey-rag python data/ocr_demo/run_table_demo.py
 ```
 
-Measured result: 74 OCR words, mean confidence 90.09%, readable raw table text, but `status: refused`, `reason: grid_not_recovered`, with one detected column. This is the current known limitation: text OCR works, while generic column/grid reconstruction still needs refinement. Do not describe this fixture as a successful structured-table extraction yet.
+Measured result (2026-09-15, after the column-recovery fix): 74 OCR words, mean confidence 90.09%, `status: accepted`, grid **7x4**, column edges at x = 386.5, 650.5, 884.0, `spanning_rows: [0]`. The caption is kept whole in row 0; the header and all five data rows align to the correct columns:
+
+```text
+Table 1: Current layout detection models in the LayoutParser model zoo | | |
+Dataset | | Base Model'| | Large Model | | Notes
+PubLayNet [38] | F/M | M | Layouts of modern scientific documents
+PRImA [3] | M | - | Layouts of scanned modern magazines and scientific reports
+Newspaper [17] | F | - | Layouts of scanned US newspapers from the 20th century
+TableBank [18] | F | F | Table region on modern scientific and business document
+HJDataset [31] | F/M | . | Layouts of history Japanese documents
+```
+
+The stray `|` tokens and the `.` for `-` are raw Tesseract output on the ruled lines; they are not cleaned up, because guessing at them would mean inventing cell content. This is one fixture, not a benchmark.
 
 The table OCR implementation is in `scripts/ocr_table_images.py`. It uses Tesseract word bounding boxes, confidence threshold 70, minimum 2x2 grid, and refuses rather than inventing cells when layout recovery is unreliable.
 
+Column recovery votes per row: each row proposes an edge at the midpoint of every within-row gap wider than `COLUMN_GAP_SCALE` (1.5) line heights; proposals within one line height merge; an edge is accepted only if at least `COLUMN_SUPPORT_FRACTION` (1/3, minimum 2) of the rows propose it. A row carrying a word across *every* edge is treated as a caption, kept whole in its first cell, and excluded from the fill-fraction measurement. The previous single-linkage clustering of word centres was what collapsed the table to one column: the caption row chained every column together.
+
 ## Next recommended work
 
-1. Improve `recover_grid` using image projection/vertical-rule detection or an adaptive multi-column model, then rerun `run_table_demo.py`.
-2. Add a Table OCR review tab to Streamlit only after a real accepted grid exists; show source crop, recovered cells, confidence, and refusal reasons.
+1. Add a Table OCR review tab to Streamlit: source crop, recovered cells, `column_boundaries`, `spanning_rows`, confidence, and refusal reasons. An accepted grid now exists, so this is unblocked.
+2. Handle cells that wrap onto a second line. Row clustering is still one line per row, so a wrapped Notes cell becomes an extra row with only one column filled. A second fixture with wrapped cells would measure how far off this is.
 3. Keep all candidate crops and raw OCR output for auditability.
 4. Commit and push only to `feature/figure-table-ocr`; keep `main` protected and unmerged.
 
@@ -84,4 +98,5 @@ The table OCR implementation is in `scripts/ocr_table_images.py`. It uses Tesser
 - Structure OCR is probabilistic and is intended as a useful capability, not perfection.
 - Largest-fragment cleanup is a heuristic and can be wrong for mixtures, co-crystals, or similarly sized components.
 - Page-level chunking does not repair words split across PDF pages.
-- Tesseract can recognise scanned text, but table structure recovery is a separate, harder step.
+- Tesseract can recognise scanned text; table structure recovery is a separate step that now works on one clean fixture. It assumes a consistent vertical gutter between columns, one line per row, and an upright scan. Fully ruled tables, wrapped multi-line cells, and rotated scans are expected to refuse or mis-row, and have not been tested.
+- The corpus rasters in `papers/` still all refuse with `low_confidence` (7 of 7 attempted); the column fix changes nothing there, because they never reach grid recovery.
