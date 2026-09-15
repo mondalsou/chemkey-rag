@@ -71,73 +71,73 @@ PRESET_QUESTIONS = [
 CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&display=swap');
-/* Palette read off the Peptide/SuLA shot: warm near-white ground, near-black
-   display serif, desaturated sage and blush off the bottles. Every colour in
-   this file comes from these tokens - swapping a theme means editing here. */
+/* Palette read off the shadcn/ui theme-generator reference: warm cream ground
+   under a hairline grid, dark slate-teal ink, one saturated magenta accent
+   used sparingly. Every colour in this file resolves from these tokens -
+   swapping a theme means editing this block and nothing else. */
 :root {
-  --paper:#f4f3f1; --surface:#ffffff; --surface-2:#eceae6;
-  --line:#dedbd6; --line-soft:#e8e5e1;
-  --ink:#16161a; --body:#3d3d42; --muted:#8b8a88; --faint:#a8a6a3;
-  --sage:#6f8674; --sage-soft:#c8d4ca; --sage-wash:#eef2ee;
-  --blush:#b07f76; --blush-soft:#e8d3ce; --blush-wash:#f7efec;
-  --cream:#e6ded1;
+  --paper:#fdf6e6; --surface:#fffdf7; --surface-2:#f6ecd8;
+  --line:#e7dac0; --line-soft:#f0e6d2;
+  --ink:#1d3a45; --body:#41606b; --muted:#7f959d; --faint:#9db0b6;
+  --accent:#c2317a; --accent-deep:#a32764; --accent-soft:#f3d3e3;
+  --teal-soft:#cfe0e3; --teal-wash:#eef5f6;
   --serif:'Playfair Display',Georgia,serif;
   --sans:'Jost','DM Sans',system-ui,sans-serif;
 }
-.stApp {background:radial-gradient(ellipse at 62% -8%,#ffffff 0,transparent 52%),var(--paper);color:var(--body);font-family:var(--sans);}
+.stApp {background:repeating-linear-gradient(0deg,var(--line-soft) 0 1px,transparent 1px 64px),repeating-linear-gradient(90deg,var(--line-soft) 0 1px,transparent 1px 64px),var(--paper);color:var(--body);font-family:var(--sans);}
 .block-container {padding-top:2.4rem;max-width:1500px;padding-bottom:5rem;}
-h1,h2,h3 {color:var(--ink);font-family:var(--serif)!important;font-weight:500!important;letter-spacing:-.015em;}
+h1,h2,h3 {color:var(--ink);font-family:var(--sans)!important;font-weight:600!important;letter-spacing:-.02em;}
 h3 {font-size:1.4rem!important;}
-[data-testid="stHeader"] {background:#f4f3f1d9;}
+[data-testid="stHeader"] {background:#fdf6e6d9;}
 [data-testid="stSidebar"] {background:var(--surface);border-right:1px solid var(--line);}
 [data-testid="stSidebar"] .block-container {padding-top:2rem;}
 [data-testid="stMetric"] {background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px 22px;min-height:118px;}
-[data-testid="stMetricValue"] {font-family:var(--serif);font-weight:500;font-size:2.5rem;color:var(--ink);}
+[data-testid="stMetricValue"] {font-family:var(--sans);font-weight:600;font-size:2.4rem;color:var(--ink);}
 [data-testid="stMetricLabel"] {color:var(--muted);font-size:.78rem;letter-spacing:.04em;}
 [data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:20px!important;}
 [data-testid="stExpander"] {background:var(--surface);border-color:var(--line);}
 [data-baseweb="tab-list"] {gap:30px;border-bottom:1px solid var(--line);margin:18px 0 26px;}
 [data-baseweb="tab"] {padding:12px 0;font-size:13px;color:var(--muted);letter-spacing:.01em;}
 [data-baseweb="tab"][aria-selected="true"] {color:var(--ink);}
-[data-baseweb="tab-highlight"] {background:var(--sage);}
-.stButton>button,.stDownloadButton>button {background:var(--ink);color:#f7f6f4;border:1px solid var(--ink);border-radius:18px;padding:9px 22px;font-family:var(--sans);font-weight:400;letter-spacing:.01em;}
-.stButton>button:hover,.stDownloadButton>button:hover {background:var(--sage);border-color:var(--sage);color:#fff;}
+[data-baseweb="tab-highlight"] {background:var(--accent);}
+.stButton>button,.stDownloadButton>button {background:var(--accent);color:#fffdf7;border:1px solid var(--accent);border-radius:999px;padding:9px 24px;font-family:var(--sans);font-weight:500;letter-spacing:.01em;}
+.stButton>button:hover,.stDownloadButton>button:hover {background:var(--accent-deep);border-color:var(--accent-deep);color:#fff;}
 [data-testid="stTextInput"] input {font-size:14px;color:var(--ink);}
 [data-testid="stTextInput"] [data-baseweb="input"], [data-baseweb="select"]>div {background:var(--surface);border-color:var(--line);border-radius:12px;}
 [data-testid="stCaptionContainer"] {color:var(--muted);}
-.ck-brand {font:500 34px var(--serif);letter-spacing:-.5px;margin-bottom:8px;color:var(--ink);}
-.ck-brand span {color:var(--sage);font-size:18px;vertical-align:14px;margin-left:3px;}
+.ck-brand {font:600 32px var(--sans);letter-spacing:-.8px;margin-bottom:8px;color:var(--ink);}
+.ck-brand span {color:var(--accent);font-size:18px;vertical-align:14px;margin-left:3px;}
 .ck-eyebrow {font-size:10px;font-weight:500;letter-spacing:2.2px;color:var(--muted);text-transform:uppercase;margin:8px 0 20px;}
 .ck-sub {color:var(--body);font-size:14px;line-height:1.9;max-width:540px;margin:20px 0;}
-.ck-key {font:400 13px ui-monospace,monospace;letter-spacing:1px;margin:10px 0;color:var(--sage);}
-.ck-mol {position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#ffffff 0,var(--sage-wash) 72%);border:1px solid var(--line);border-radius:22px;text-align:center;padding:26px 15px;box-shadow:0 14px 44px #1616180c;}
-.ck-mol:before {content:'';position:absolute;inset:14px;border:1px solid var(--sage-soft);border-radius:50%;z-index:-1;transform:rotate(-25deg) scale(.84);}
+.ck-key {font:400 13px ui-monospace,monospace;letter-spacing:1px;margin:10px 0;color:var(--accent);}
+.ck-mol {position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,var(--surface) 0,var(--teal-wash) 74%);border:1px solid var(--line);border-radius:22px;text-align:center;padding:26px 15px;box-shadow:0 14px 44px #1d3a450f;}
+.ck-mol:before {content:'';position:absolute;inset:14px;border:1px solid var(--teal-soft);border-radius:50%;z-index:-1;transform:rotate(-25deg) scale(.84);}
 .ck-mol svg {width:100%;height:auto;max-width:370px;}
 .ck-pill {display:inline-block;padding:4px 11px;margin:3px 5px 3px 0;border:1px solid var(--line);border-radius:20px;font-size:11px;background:var(--surface);color:var(--body);}
 .ck-snip {font-size:14px;line-height:1.95;color:var(--body);margin:14px 0;}
-.ck-snip mark {background:var(--cream);color:var(--ink);}
+.ck-snip mark {background:var(--accent-soft);color:var(--ink);}
 .ck-meta {font-size:10px;color:var(--faint);letter-spacing:.8px;}
 .ck-grid {overflow-x:auto;margin:10px 0;}
 .ck-grid table {border-collapse:collapse;font-size:12px;color:var(--body);width:100%;}
 .ck-grid th, .ck-grid td {border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top;}
 .ck-grid th {color:var(--ink);font-weight:500;background:var(--surface-2);}
 .ck-grid em {color:var(--muted);font-style:italic;}
-.ck-status {font-size:11px;color:var(--sage);border:1px solid var(--sage-soft);background:var(--sage-wash);padding:8px 13px;border-radius:20px;display:inline-block;}
+.ck-status {font-size:11px;color:var(--body);border:1px solid var(--teal-soft);background:var(--teal-wash);padding:8px 13px;border-radius:20px;display:inline-block;}
 .ck-paper {padding:16px 0;border-bottom:1px solid var(--line-soft);font-size:12px;line-height:1.85;color:var(--body);}
 .ck-topbar {display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:34px;color:var(--muted);font-size:11px;letter-spacing:1px;}
 .ck-topbar strong {color:var(--ink);letter-spacing:2px;font-weight:500;}
-.ck-hero-title {font:500 clamp(34px,3.8vw,54px)/1.16 var(--serif);color:var(--ink);letter-spacing:-.8px;margin:12px 0 22px;}
-.ck-hero-title em {color:var(--sage);font-weight:500;font-style:normal;}
-.ck-hero-note {font-size:11px;color:var(--muted);border-left:2px solid var(--sage-soft);padding-left:12px;margin:24px 0 10px;}
+.ck-hero-title {font:600 clamp(34px,3.8vw,54px)/1.14 var(--sans);color:var(--ink);letter-spacing:-1.4px;margin:12px 0 22px;}
+.ck-hero-title em {font-family:var(--serif);font-style:italic;font-weight:500;color:var(--ink);}
+.ck-hero-note {font-size:11px;color:var(--muted);border-left:2px solid var(--accent-soft);padding-left:12px;margin:24px 0 10px;}
 [data-testid="stChatMessage"] {background:var(--surface);border:1px solid var(--line);border-radius:18px;}
 .ck-name-row {display:grid;grid-template-columns:1fr auto;gap:5px 15px;margin:13px 0;font-size:13px;color:var(--body);}
 .ck-name-row.selected {color:var(--ink);}
-.ck-name-row small {font-size:8px;letter-spacing:1px;color:var(--blush);margin-left:6px;}
+.ck-name-row small {font-size:8px;letter-spacing:1px;color:var(--accent);margin-left:6px;}
 .ck-name-row b {font-weight:500;color:var(--ink);}
 .ck-name-track {grid-column:1/-1;height:3px;background:var(--surface-2);border-radius:3px;overflow:hidden;}
-.ck-name-track i {display:block;height:100%;background:var(--sage);border-radius:3px;}
+.ck-name-track i {display:block;height:100%;background:var(--accent);border-radius:3px;}
 .ck-recovery {color:var(--muted);font-size:12px;margin:15px 0;}
-.ck-recovery strong {color:var(--ink);font-family:var(--serif);font-size:26px;margin-right:5px;}
+.ck-recovery strong {color:var(--accent);font-family:var(--sans);font-weight:600;font-size:26px;margin-right:5px;}
 @media(max-width:700px) {.block-container{padding:1.4rem 1rem;}.ck-hero-title{font-size:38px;}.ck-topbar{gap:15px;font-size:9px;}[data-baseweb="tab-list"]{gap:15px;}.ck-mol{padding:15px;}}
 </style>
 """
@@ -173,10 +173,10 @@ def depict(smiles, size=(300, 190)):
     drawer = rdMolDraw2D.MolDraw2DSVG(*size)
     drawer.drawOptions().clearBackground = False
     drawer.drawOptions().useBWAtomPalette()
-    # Ink on paper, with sage for N and blush for O - the same two accents the
-    # stylesheet uses, so a molecule reads as part of the page.
-    drawer.drawOptions().setAtomPalette({-1: (0.09, 0.09, 0.10), 7: (0.44, 0.53, 0.45), 8: (0.69, 0.50, 0.46)})
-    drawer.drawOptions().setSymbolColour((0.09, 0.09, 0.10))
+    # Slate-teal ink with the page's magenta on O, so a molecule reads as part
+    # of the page rather than a pasted-in image.
+    drawer.drawOptions().setAtomPalette({-1: (0.11, 0.23, 0.27), 7: (0.25, 0.38, 0.42), 8: (0.76, 0.19, 0.48)})
+    drawer.drawOptions().setSymbolColour((0.11, 0.23, 0.27))
     drawer.drawOptions().bondLineWidth = 2
     rdMolDraw2D.PrepareAndDrawMolecule(drawer, mol)
     drawer.FinishDrawing()
