@@ -5,10 +5,16 @@ happened to type.
 
 A name search depends on the spelling in the paper. ChemKeyRAG links detected
 names to molecular connectivity keys, so a query can retrieve indexed passages
-under other names. It reads PDF text; structures shown only in drawings are not
-indexed. Name detection and resolution can miss mentions.
+under other names. It reads native PDF text and can optionally read visual
+evidence: molecular depictions in figures and tables, and image-only tables.
+Every visual result keeps its source crop for review. Name detection,
+recognition and resolution can still miss mentions.
 
 No vector database. No embeddings. No trained NER model.
+
+**Keywords:** chemical structure search, chemical OCR, optical character
+recognition, DECIMER, Tesseract, RDKit, InChIKey, scientific literature,
+document AI, BM25, retrieval-augmented generation, Streamlit.
 
 ## What the demo measures
 
@@ -54,6 +60,13 @@ query ---+-- text      -> BM25 over chunk text
          +-- structure -> exact skeleton match, then BM25 rank within the matches
                             |
                             +-- LLM composes a cited answer over retrieved spans only
+
+visual evidence ---+-- molecular figures / schemes -> DECIMER segmentation
+                  |                                  -> DECIMER SMILES
+                  |                                  -> RDKit + InChIKey -> structure anchors
+                  |
+                  +-- image-only tables             -> Tesseract word boxes
+                                                     -> accepted grid -> searchable passage
 ```
 
 1. **Extract** — `pypdf` reads pages, text is split into ~180-word overlapping windows
@@ -71,6 +84,23 @@ query ---+-- text      -> BM25 over chunk text
 7. **Answer** — every claim cites `[Source N]`; the model is told to refuse rather
    than fill a gap, and never to invent an identifier
 
+### OCR and image evidence
+
+- **Molecular figures, schemes and table depictions** — the optional local
+  DECIMER path renders the page, finds candidate depictions, predicts SMILES,
+  and accepts a result only after RDKit parsing and InChIKey generation. The
+  source crop and reconstructed molecule appear side by side in the app.
+- **Image-only tables** — the optional Tesseract path uses word boxes to recover
+  a grid. It indexes only a confident, sufficiently filled grid; all rejected
+  rasters remain visible with their crop, raw text and refusal reason.
+- **Native digital tables** — `pypdf` text remains the normal path. Image-table
+  OCR adds evidence where text extraction cannot read the table; it does not
+  replace healthy embedded text.
+
+An accepted chemical OCR result means the predicted structure was parsable. It
+is not a claim that a human has confirmed every bond in the original drawing.
+The retained crop is part of the evidence.
+
 ## Stack
 
 | Component | Choice | Why |
@@ -78,6 +108,8 @@ query ---+-- text      -> BM25 over chunk text
 | Retrieval | BM25, hand-rolled | Interpretable, zero index cost, the honest baseline to beat before paying for vector infrastructure |
 | Entity linking | Shipped lexicon + PubChem PUG-REST | Deterministic and offline by default; the network path is a fallback, not a dependency |
 | Normalisation | RDKit InChIKey | The only join key that is toolkit-independent |
+| Structure image OCR | DECIMER + DECIMER-Segmentation | Local depiction-to-SMILES with retained crop provenance |
+| Image-table OCR | Tesseract | Word boxes, grid recovery and explicit refusal gates |
 | LLM | `deepseek/deepseek-v4-flash` via OpenRouter | Cheap; any OpenRouter model is a drop-in |
 | UI | Streamlit | One file, no build step |
 
@@ -108,9 +140,17 @@ Download the three papers listed in [`papers/PAPERS.md`](papers/PAPERS.md) into
 
 ```bash
 python build_index.py --offline     # lexicon only, no network
-python build_index.py --offline --structure-images  # optional local OCSR
+# Optional image evidence paths (install their extras first):
+python build_index.py --offline --structure-images  # DECIMER figures / schemes
+python build_index.py --offline --image-tables      # Tesseract image tables
 streamlit run streamlit_app.py
 ```
+
+Image OCR runs locally and is opt-in. For chemical drawings, install
+`requirements-structure-ocr.txt`; for image tables, install
+`requirements-table-ocr.txt` and the system Tesseract executable. See
+[docs/FIGURE_TABLE_OCR.md](docs/FIGURE_TABLE_OCR.md) for commands, provenance
+records, and limits.
 
 For a written answer, add an OpenRouter key:
 
@@ -165,11 +205,11 @@ for the long tail. `make_lexicon.py` parses, canonicalises and hashes every entr
 with RDKit before writing, so a wrong SMILES cannot reach the index silently.
 
 **What a real system would add.** A trained chemical NER model, to catch trade
-names, typos and names broken across a line break. OSCAR/OSRA-style structure
-extraction from schemes and figures, which is where most of the chemistry in a
-paper actually lives. Tautomer canonicalisation policy, versioned — changing it
-re-partitions the whole index. And provenance on every resolution, so a bad link
-can be traced and retracted rather than silently corrected.
+names, typos and names broken across a line break. A reviewed benchmark set for
+DECIMER across figures, schemes and scanned documents. Tautomer canonicalisation
+policy, versioned — changing it re-partitions the whole index. And provenance on
+every resolution, so a bad link can be traced and retracted rather than silently
+corrected.
 
 **What it deliberately does not do.** It does not generate structures, and it
 does not let the model assert an identifier. A generated CAS Registry Number that
@@ -199,11 +239,13 @@ the app prefers `data/index.json` when it exists.
 
 ## Research workspace
 
-The refreshed UI has four views: Evidence explorer (topic and paper filters,
-full passages, JSON export), Ask the library (molecule-pinned cited chat),
-Retrieval insights (exact-name coverage and BM25 comparisons), and Source
-library (original PDF downloads). Chemical-name queries use the resolved
-structure; unresolved names stop instead of falling back to an example.
+The refreshed UI has six views: **Evidence explorer** for ranked, exportable
+passages; **Image structures** for DECIMER crops beside the reconstructed
+molecule; **Image tables** for accepted grids and refused-raster audit cards;
+**Ask the library** for molecule-pinned cited chat; **Retrieval insights** for
+exact-name and structure coverage; and **Source library** for the original
+papers. Chemical-name queries use the resolved structure; unresolved names stop
+instead of falling back to an example.
 
 Run checks from the repo root (no network). `check_image_inventory.py` exits
 0 with SKIP/OK when `papers/*.pdf` are absent, so a clone without the corpus
