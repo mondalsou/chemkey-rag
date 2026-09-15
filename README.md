@@ -225,8 +225,10 @@ answer service. Coverage metrics include references; ranked retrieval filters
 detected reference lists. Topic terms rank matching structures and may fall
 back to general structure passages when no topic terms match.
 `check_solubility.py` needs a local paper B PDF and `data/index.json`. Image
-inventory and image-table OCR write gitignored metadata only and do not rebuild
-the index. `check_table_ocr.py` is SKIP/OK without PDFs or Tesseract.
+inventory writes gitignored metadata only and does not rebuild the index;
+`--image-tables` adds accepted grids to the index and shows every attempted
+raster in the **Image tables** tab. `check_table_ocr.py` is SKIP/OK without
+PDFs or Tesseract.
 `python build_index.py --image-tables` is opt-in and off by default. See
 [docs/FIGURE_TABLE_OCR.md](docs/FIGURE_TABLE_OCR.md).
 

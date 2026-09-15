@@ -85,10 +85,37 @@ The table OCR implementation is in `scripts/ocr_table_images.py`. It uses Tesser
 
 Column recovery votes per row: each row proposes an edge at the midpoint of every within-row gap wider than `COLUMN_GAP_SCALE` (1.5) line heights; proposals within one line height merge; an edge is accepted only if at least `COLUMN_SUPPORT_FRACTION` (1/3, minimum 2) of the rows propose it. A row carrying a word across *every* edge is treated as a caption, kept whole in its first cell, and excluded from the fill-fraction measurement. The previous single-linkage clustering of word centres was what collapsed the table to one column: the caption row chained every column together.
 
+## Image tables in the app
+
+`--image-tables` now attaches accepted grids to the index and the Streamlit app
+has an **Image tables** tab beside Image structures: rasters attempted, grids
+accepted, passages added, then one card per attempted raster with its retained
+crop (`data/extracted_tables/`, gitignored), the recovered grid, the voted
+column edges, and the raw OCR text.
+
+The corpus has no image-only table, so the demo needs a fixture. Rebuild it with:
+
+```bash
+python scripts/make_scanned_table_fixture.py   # -> papers/D_raman_table1_scan.pdf
+python build_index.py --image-tables
+```
+
+That rasterises Table 1 of the Raman paper (p-aminophenol mixed with
+acetaminophen) into a one-page image-only PDF. Measured on it: 84 words at 92.98
+mean confidence, accepted as a **15x4** grid, the three caption lines and the
+`% p-Aminophenol` group header marked spanning, all data rows correct. The
+passage resolves `acetaminophen` to `RZVAJINKPMORJF`, so a paracetamol structure
+query reaches a table that exists only as pixels. It is scan-like, not an
+original scanner capture.
+
+Local index after the rebuild: 5 papers, 281 chunks, 1 accepted image table, 1
+accepted image structure. `--structure-images` was not re-run; the cached
+`data/structure_ocr.json` was reattached with `ck.attach_image_structures`.
+
 ## Next recommended work
 
-1. Add a Table OCR review tab to Streamlit: source crop, recovered cells, `column_boundaries`, `spanning_rows`, confidence, and refusal reasons. An accepted grid now exists, so this is unblocked.
-2. Handle cells that wrap onto a second line. Row clustering is still one line per row, so a wrapped Notes cell becomes an extra row with only one column filled. A second fixture with wrapped cells would measure how far off this is.
+1. Handle cells that wrap onto a second line. Row clustering is still one line per row, so a wrapped Notes cell becomes an extra row with only one column filled. A second fixture with wrapped cells would measure how far off this is.
+2. `checks/check_workspace.py` fails on `assert at.metric[0].value == '133'`. It was already failing before this work: that count is pinned to the original three-paper corpus, and the local index has had a fourth paper since the structure-OCR session. Re-pin it or scope it to the three committed papers.
 3. Keep all candidate crops and raw OCR output for auditability.
 4. Commit and push only to `feature/figure-table-ocr`; keep `main` protected and unmerged.
 

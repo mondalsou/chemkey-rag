@@ -21,6 +21,7 @@ DECIMER / MolScribe are phase 3 and are not imported here.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -31,9 +32,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import inventory_pdf_images as inv
 
+ROOT = Path(__file__).resolve().parents[1]
+
 DEFAULT_PAPERS_DIR = "papers"
 DEFAULT_INVENTORY = "data/image_inventory.json"
 DEFAULT_OUT = "data/table_ocr.json"
+DEFAULT_CROPS_DIR = "data/extracted_tables"
 
 # Tesseract word confidence is 0–100. Below this mean we refuse the table.
 # 70 is conservative: the paper-B figure rasters in this corpus sit in the
@@ -210,12 +214,18 @@ def _column_of(word, boundaries):
     return sum(1 for edge in boundaries if center > edge)
 
 
-def _is_spanning_row(row, boundaries):
-    """True when a word sits across every column edge: a caption, not a data row."""
-    return all(
-        any(w["left"] < edge < w["left"] + w["width"] for w in row)
-        for edge in boundaries
-    )
+def _is_spanning_row(row, boundaries, min_gap):
+    """True when a row proposes no column edge of its own yet crosses one.
+
+    A caption, or a wrapped continuation of one, runs across the table at
+    ordinary word spacing: it never shows a gutter, so it must not be cut at
+    edges only the data rows voted for.
+    """
+    if _row_gap_midpoints(row, min_gap):
+        return False
+    left = min(w["left"] for w in row)
+    right = max(w["left"] + w["width"] for w in row)
+    return any(left < edge < right for edge in boundaries)
 
 
 def recover_grid(words, min_rows=MIN_ROWS, min_cols=MIN_COLS):
@@ -236,9 +246,10 @@ def recover_grid(words, min_rows=MIN_ROWS, min_cols=MIN_COLS):
     n_rows = len(row_groups)
     if n_rows < min_rows:
         return None
+    min_gap = max(12.0, line_height * COLUMN_GAP_SCALE)
     boundaries = column_boundaries(
         row_groups,
-        min_gap=max(12.0, line_height * COLUMN_GAP_SCALE),
+        min_gap=min_gap,
         tolerance=max(8.0, line_height * COLUMN_MERGE_SCALE),
         min_support=max(2, math.ceil(n_rows * COLUMN_SUPPORT_FRACTION)),
     )
@@ -250,7 +261,7 @@ def recover_grid(words, min_rows=MIN_ROWS, min_cols=MIN_COLS):
     spanning_rows = []
     for r, row in enumerate(row_groups):
         ordered = sorted(row, key=lambda w: w["left"])
-        if _is_spanning_row(row, boundaries):
+        if _is_spanning_row(row, boundaries, min_gap):
             spanning_rows.append(r)
             cells[r][0] = " ".join(w["text"] for w in ordered)
             continue
@@ -353,9 +364,28 @@ def _pdf_path_for(filename, papers_dir):
     return os.path.join(papers_dir, filename)
 
 
-def ocr_table_record(rec, papers_dir, ocr_fn=ocr_image_to_data):
+def stable_table_id(filename, page, image_index):
+    raw = f"{filename}|{page}|{image_index}".encode()
+    return "tbl_" + hashlib.sha1(raw).hexdigest()[:14]
+
+
+def _save_crop(image, crops_dir, table_id):
+    """Retain the raster that was OCR'd, so a reviewer can check the cells."""
+    path = Path(crops_dir) / f"{table_id}.png"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.convert("RGB").save(path, format="PNG", optimize=True)
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def ocr_table_record(rec, papers_dir, ocr_fn=ocr_image_to_data, crops_dir=None):
     """Skip, refuse, or accept one inventory row. Raster stays in memory."""
     base = {
+        "id": stable_table_id(
+            rec.get("filename"), rec.get("page"), rec.get("image_index")
+        ),
         "paper_id": rec.get("paper_id"),
         "filename": rec.get("filename"),
         "page": rec.get("page"),
@@ -363,6 +393,7 @@ def ocr_table_record(rec, papers_dir, ocr_fn=ocr_image_to_data):
         "width": rec.get("width"),
         "height": rec.get("height"),
         "xobject_name": rec.get("xobject_name"),
+        "image_path": None,
     }
     reason = skip_reason_for_record(rec)
     if reason:
@@ -375,6 +406,8 @@ def ocr_table_record(rec, papers_dir, ocr_fn=ocr_image_to_data):
         )
     if pil is None:
         return {**base, **_refused("decode_failed")}
+    if crops_dir:
+        base["image_path"] = _save_crop(pil, crops_dir, base["id"])
     try:
         data = ocr_fn(pil)
         words = words_from_tesseract_data(data)
@@ -389,12 +422,16 @@ def ocr_table_record(rec, papers_dir, ocr_fn=ocr_image_to_data):
     return {**base, **decided}
 
 
-def build_table_ocr(inventory, papers_dir, ocr_fn=ocr_image_to_data):
+def build_table_ocr(
+    inventory, papers_dir, ocr_fn=ocr_image_to_data, crops_dir=DEFAULT_CROPS_DIR
+):
     rows = []
     for rec in inventory.get("images") or []:
         if rec.get("label") != "table_image":
             continue
-        rows.append(ocr_table_record(rec, papers_dir, ocr_fn=ocr_fn))
+        rows.append(
+            ocr_table_record(rec, papers_dir, ocr_fn=ocr_fn, crops_dir=crops_dir)
+        )
 
     counts = Counter(r["status"] for r in rows)
     skip_reasons = Counter(
@@ -415,6 +452,7 @@ def build_table_ocr(inventory, papers_dir, ocr_fn=ocr_image_to_data):
         "tesseract_psm": TESSERACT_PSM,
         "tesseract_version": tesseract_version_string(),
         "papers_dir": papers_dir,
+        "crops_dir": crops_dir,
         "counts": {
             "table_image_candidates": len(rows),
             "skipped": int(counts.get("skipped", 0)),
@@ -470,11 +508,14 @@ def run_table_ocr(
     out_path=DEFAULT_OUT,
     dry_run=False,
     ocr_fn=ocr_image_to_data,
+    crops_dir=DEFAULT_CROPS_DIR,
 ):
     inventory = load_or_build_inventory(papers_dir, inventory_path)
     if inventory is None:
         return None
-    summary = build_table_ocr(inventory, papers_dir, ocr_fn=ocr_fn)
+    summary = build_table_ocr(
+        inventory, papers_dir, ocr_fn=ocr_fn, crops_dir=crops_dir
+    )
     if not dry_run:
         write_table_ocr(summary, out_path)
     return summary

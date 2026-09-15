@@ -18,6 +18,26 @@ paper (a clean negative control for the structure query):
 - *Virtual Screening, Structural Analysis, and Formation Thermodynamics of
   Carbamazepine Cocrystals* — [PMC10052035](https://pmc.ncbi.nlm.nih.gov/articles/PMC10052035/)
 
+## Scan-like fixture for the image-table pipeline
+
+`--image-tables` needs a page with no text layer. The corpus has none, so build
+one from a paper you already have:
+
+```bash
+# Shende et al., Drug Stability Analysis by Raman Spectroscopy,
+# Pharmaceutics 2014 (CC BY) — PMC4279130. Save it, then:
+python scripts/make_scanned_table_fixture.py \
+  --source <that paper>.pdf --page 7 --clip 60,335,540,590 \
+  --out papers/D_raman_table1_scan.pdf
+python build_index.py --image-tables
+```
+
+That rasterises its Table 1 (prepared versus calculated percentages of
+p-aminophenol mixed with acetaminophen) into a one-page image-only PDF. It is
+**scan-like, not an original scanner capture**: no text layer and one embedded
+raster, but none of a real scan's noise, skew, or bleed-through. Report numbers
+measured on it with that caveat attached.
+
 ## Why this set works
 
 Search the corpus for `paracetamol` and you get paper 1.

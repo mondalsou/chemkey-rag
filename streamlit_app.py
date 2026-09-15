@@ -105,6 +105,11 @@ h3 {font-size:1.35rem!important;}
 .ck-snip {font-size:14px;line-height:1.9;color:#d0c2c8;margin:14px 0;}
 .ck-snip mark {background:#91653b;color:#fff3d9;}
 .ck-meta {font-size:10px;color:#b7a4ae;letter-spacing:.8px;}
+.ck-grid {overflow-x:auto;margin:10px 0;}
+.ck-grid table {border-collapse:collapse;font-size:12px;color:#d9c8d2;width:100%;}
+.ck-grid th, .ck-grid td {border:1px solid #3a2934;padding:5px 9px;text-align:left;vertical-align:top;}
+.ck-grid th {color:#f0e2ea;font-weight:600;background:#2a1f27;}
+.ck-grid em {color:#b7a4ae;font-style:italic;}
 .ck-status {font-size:11px;color:#bdd1aa;border:1px solid #526044;background:#26302266;padding:8px 13px;border-radius:20px;display:inline-block;}
 .ck-paper {padding:16px 0;border-bottom:1px solid #342631;font-size:12px;line-height:1.8;color:#c2afb9;}
 .ck-topbar {display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3a2934;padding-bottom:18px;margin-bottom:32px;color:#c4afb9;font-size:11px;letter-spacing:1px;}
@@ -385,6 +390,67 @@ def render_ocr_candidates(records, limit=24):
         st.caption(f"Showing {len(shown)} of {len(records)} retained candidates.")
 
 
+def render_recovered_grid(cells, spanning_rows=None):
+    """Show a recovered grid as-is. Empty cells stay visibly empty."""
+    spanning = set(spanning_rows or [])
+    rows = []
+    for number, row in enumerate(cells or []):
+        # No header row is assumed: OCR cannot tell a heading from a value.
+        if number in spanning:
+            body = (
+                f"<td colspan='{len(row)}'><em>{html.escape(row[0])}</em></td>"
+            )
+        else:
+            body = "".join(f"<td>{html.escape(value)}</td>" for value in row)
+        rows.append(f"<tr>{body}</tr>")
+    st.markdown(
+        "<div class='ck-grid'><table>" + "".join(rows) + "</table></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def render_table_candidates(records, limit=12):
+    """Show crop evidence for every raster the table OCR actually attempted."""
+    if not records:
+        st.info("No image-only tables were attempted in this index.")
+        return
+    shown = records[:limit]
+    for record in shown:
+        with st.container(border=True):
+            st.markdown(
+                f"<div class='ck-meta'>{html.escape(record.get('filename', 'unknown source'))} "
+                f"&nbsp;·&nbsp; PAGE {record.get('page', '?')} &nbsp;·&nbsp; "
+                f"{record.get('width', '?')}×{record.get('height', '?')} PX</div>",
+                unsafe_allow_html=True,
+            )
+            image_path = record.get("image_path")
+            if image_path and Path(image_path).exists():
+                st.image(image_path, caption="Retained source raster", use_container_width=True)
+            else:
+                st.caption("The local source raster is not available in this deployment.")
+            confidence = record.get("mean_confidence")
+            if record.get("status") == "accepted":
+                st.success(
+                    f"Accepted: {record.get('n_rows')}×{record.get('n_cols')} grid at "
+                    f"{confidence:.1f} mean word confidence."
+                )
+                render_recovered_grid(record.get("cells"), record.get("spanning_rows"))
+                st.caption(
+                    "Machine-read cells, italic rows span the table. "
+                    f"Column edges voted at x = {record.get('column_boundaries')}. "
+                    "Check this crop before quoting a number."
+                )
+            else:
+                reason = record.get("reason", "not accepted")
+                seen = f" at {confidence:.1f} mean confidence" if confidence else ""
+                st.warning(f"Refused: {reason}{seen}. No cells are indexed.")
+            if record.get("raw_text"):
+                with st.expander("Raw OCR text, before any layout recovery"):
+                    st.code(record["raw_text"], language=None)
+    if len(records) > len(shown):
+        st.caption(f"Showing {len(shown)} of {len(records)} attempted rasters.")
+
+
 # --------------------------------------------------------------------------
 
 def main():
@@ -488,7 +554,7 @@ def main():
         with st.expander("How to read this comparison"):
             st.caption("Each name matches only that exact phrase. Structure retrieval joins indexed names by connectivity key. Counts include references; ranked results filter detected bibliographies. Name counts overlap and should not be added.")
             st.caption("This shows the benefit over one name, not over a complete synonym list. See Retrieval insights for that comparison. Accepted image structures are shown separately with their original crops.")
-    evidence_tab, image_tab, chat_tab, compare_tab, library_tab = st.tabs(["Evidence explorer", "Image structures", "Ask the library", "Retrieval insights", "Source library"])
+    evidence_tab, image_tab, table_tab, chat_tab, compare_tab, library_tab = st.tabs(["Evidence explorer", "Image structures", "Image tables", "Ask the library", "Retrieval insights", "Source library"])
     with evidence_tab:
         c1, c2 = st.columns([3, 2])
         question_filter = c1.text_input("Narrow by topic", placeholder="e.g. solubility, hydrogen bonds, DMSO")
@@ -519,6 +585,28 @@ def main():
             st.caption("This index was built without the optional structure-image pipeline.")
         st.markdown("**Retained crop review**")
         render_ocr_candidates(candidates)
+    with table_tab:
+        st.subheader("Tables read out of image-only pages")
+        table_report = index.get("table_ocr") or {}
+        table_counts = table_report.get("counts") or {}
+        accepted_tables = index.get("image_tables") or []
+        table_candidates = index.get("table_ocr_candidates") or accepted_tables
+        table_chunks = [c for c in chunks if c.get("extraction_method") == "table_ocr"]
+        t1, t2, t3 = st.columns(3)
+        t1.metric("Rasters OCR'd", table_counts.get("ocr_attempted", len(table_candidates)))
+        t2.metric("Grids accepted", table_counts.get("accepted", len(accepted_tables)))
+        t3.metric("Searchable passages added", len(table_chunks))
+        if table_report:
+            st.caption(
+                "Tesseract word boxes → column edges voted per row → grid. "
+                f"Mean word confidence below {table_report.get('confidence_threshold')} "
+                "is refused, and so is a grid that cannot be recovered. "
+                "Cell values are never invented."
+            )
+        else:
+            st.caption("This index was built without the optional image-table pipeline.")
+        st.markdown("**Attempted raster review**")
+        render_table_candidates(table_candidates)
     with compare_tab:
         st.subheader("What does structure actually add?")
         reach = reach_report(INDEX_PATH, mtime, block, text_query if mode == "Chemical name" else "")

@@ -2,7 +2,7 @@
 
     python build_index.py                 # papers/*.pdf -> data/index.json
     python build_index.py --offline       # lexicon only, no PubChem calls
-    python build_index.py --image-tables  # same index, plus gitignored table OCR sidecar
+    python build_index.py --image-tables  # accepted image-only tables -> searchable passages
     python build_index.py --structure-images  # DECIMER -> RDKit -> searchable image structures
 
 Default ingest is native pypdf page text. --image-tables is OFF by default and
@@ -29,8 +29,9 @@ def main():
         "--image-tables",
         action="store_true",
         default=False,
-        help="opt-in sidecar: OCR image-only tables to data/table_ocr.json. "
-             "Off by default. Does not replace pypdf native-text tables.",
+        help="opt-in: OCR image-only tables, retain crops, and add accepted "
+             "grids to the index as reviewable passages. Off by default. "
+             "Does not replace pypdf native-text tables.",
     )
     parser.add_argument(
         "--structure-images",
@@ -71,9 +72,10 @@ def main():
                 "native-text index already written. See requirements-table-ocr.txt."
             )
         else:
-            print("\n--image-tables: running image-table OCR sidecar (index already written)")
+            print("\n--image-tables: OCR of image-only tables; retaining source crops")
             summary = table_ocr.run_table_ocr(papers_dir=args.papers)
             if summary:
+                ck.attach_image_tables(index, summary, resolver=resolver)
                 table_ocr.print_summary(summary)
                 print("Wrote data/table_ocr.json")
 
@@ -105,6 +107,7 @@ def main():
     print(f"  {len(index['chunks'])} chunks, {annotated} carry at least one structure")
     print(f"  {len(index['compounds'])} names resolved")
     print(f"  {len(index.get('image_structures', []))} image structures accepted")
+    print(f"  {len(index.get('image_tables', []))} image tables accepted")
 
     skeletons = {}
     for name, record in index["compounds"].items():

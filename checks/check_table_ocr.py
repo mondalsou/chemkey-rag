@@ -182,6 +182,45 @@ skipped = ocr.ocr_table_record(strip, str(PAPERS), ocr_fn=fake_high)
 assert skipped["status"] == "skipped" and skipped["reason"] == "thin_table_rule"
 assert skipped["cells"] is None
 
+# --- accepted grids reach the index as reviewable passages; refused ones do not ---
+sys.path.insert(0, str(ROOT))
+import chemkey as ck
+
+report = {
+    "classifier": "tesseract_layout",
+    "counts": {"accepted": 1, "refused": 1},
+    "tables": [
+        {
+            "id": "tbl_accepted", "filename": "D_scan.pdf", "page": 1,
+            "status": "accepted", "reason": None, "mean_confidence": 91.0,
+            "cells": [["Compound", "%"], ["acetaminophen", "50"]],
+            "n_rows": 2, "n_cols": 2, "image_path": "data/extracted_tables/x.png",
+        },
+        {
+            "id": "tbl_refused", "filename": "D_scan.pdf", "page": 2,
+            "status": "refused", "reason": "low_confidence", "cells": None,
+        },
+        {
+            "id": "tbl_skipped", "filename": "D_scan.pdf", "page": 3,
+            "status": "skipped", "reason": "thin_table_rule", "cells": None,
+        },
+    ],
+}
+fixture_index = {"chunks": [{"text": "native page text", "extraction_method": "native"}],
+                 "compounds": {}}
+ck.attach_image_tables(fixture_index, report)
+table_chunks = [c for c in fixture_index["chunks"] if c.get("extraction_method") == "table_ocr"]
+assert len(table_chunks) == 1, table_chunks
+assert "acetaminophen | 50" in table_chunks[0]["text"]
+assert table_chunks[0]["table_ocr_id"] == "tbl_accepted"
+assert len(fixture_index["chunks"]) == 2, "native chunks must survive"
+assert len(fixture_index["image_tables"]) == 1
+# Refused rasters stay reviewable but never become passages; skips are not shown.
+assert [r["id"] for r in fixture_index["table_ocr_candidates"]] == ["tbl_accepted", "tbl_refused"]
+# Re-attaching replaces table passages instead of duplicating them.
+ck.attach_image_tables(fixture_index, report)
+assert len([c for c in fixture_index["chunks"] if c.get("extraction_method") == "table_ocr"]) == 1
+
 # --- native-text table path is untouched (pypdf extract_text, no Tesseract) ---
 chemkey_src = (ROOT / "chemkey.py").read_text(encoding="utf-8")
 assert "page.extract_text()" in chemkey_src
@@ -225,12 +264,14 @@ if not tess:
 # Live run writes only a temp sidecar; index fingerprints must hold.
 with tempfile.TemporaryDirectory() as tmp:
     out = Path(tmp) / "table_ocr.json"
+    crops = Path(tmp) / "crops"
     inventory_path = ROOT / "data" / "image_inventory.json"
     summary = ocr.run_table_ocr(
         papers_dir=str(PAPERS),
         inventory_path=str(inventory_path) if inventory_path.exists() else "",
         out_path=str(out),
         dry_run=False,
+        crops_dir=str(crops),
     )
     assert summary is not None
     counts = summary["counts"]
@@ -245,6 +286,10 @@ with tempfile.TemporaryDirectory() as tmp:
         if row["status"] == "accepted":
             assert row["cells"], row
             assert row["mean_confidence"] >= ocr.CONFIDENCE_THRESHOLD
+            assert row["n_cols"] >= ocr.MIN_COLS and row["n_rows"] >= ocr.MIN_ROWS
+        if row["status"] != "skipped":
+            # every attempted raster keeps its crop for review
+            assert row["image_path"], row
         if row["status"] == "refused":
             assert row["cells"] is None
             assert row["reason"]

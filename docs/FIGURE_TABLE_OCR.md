@@ -50,7 +50,11 @@ rebuilds it) and:
    - no tokens, or the raster would not decode.
    Refused records have `cells: null`. Empty cells in an accepted grid stay
    empty strings. Cell values are never invented.
-6. Writes gitignored `data/table_ocr.json`. **Does not mutate** `data/index.json`.
+6. Writes gitignored `data/table_ocr.json`, retains every attempted raster under
+   gitignored `data/extracted_tables/`, and — under `--image-tables` — adds each
+   accepted grid to `data/index.json` as one passage
+   (`extraction_method: "table_ocr"`) whose chemical names are resolved like any
+   other passage. Refused rasters stay reviewable but are never indexed.
 
 Accepted records carry `column_boundaries` (the voted x edges) and
 `spanning_rows` alongside `cells`, so a reviewer can see why a cell landed
@@ -84,8 +88,21 @@ Ingest flag, **off by default**:
 
 ```bash
 python build_index.py                   # native text only (demo path)
-python build_index.py --image-tables    # same index, plus table_ocr.json sidecar
+python build_index.py --image-tables    # + accepted grids as searchable passages
 ```
+
+### In the app
+
+The **Image tables** tab mirrors Image structures: counts of rasters attempted,
+grids accepted, and passages added; then one card per attempted raster with its
+retained crop, the recovered grid (spanning rows shown italic and merged), the
+voted column edges, and the raw OCR text before layout recovery. Refused rasters
+show the crop and the refusal reason with no cells, which is the point — the
+gate is visible, not hidden.
+
+The corpus has no image-only table of its own, so the tab needs the scan-like
+fixture described in `papers/PAPERS.md`; without it the tab shows nine attempted
+rasters, eight of them plots that correctly refuse on confidence.
 
 `--image-tables` never substitutes Tesseract for `extract_text()`. A page-level
 sparse OCR auto-fallback, if present on another branch, is a different feature;

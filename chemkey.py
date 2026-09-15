@@ -400,6 +400,77 @@ def attach_image_structures(index, report):
     return index
 
 
+def table_rows_to_text(cells):
+    """Flatten a recovered grid to searchable text, one row per line."""
+    return "\n".join(
+        " | ".join(value for value in row if value.strip()) for row in cells or []
+    ).strip()
+
+
+def attach_image_tables(index, report, resolver=None):
+    """Add accepted OCR'd tables as retrievable passages; keep every candidate.
+
+    An accepted grid is OCR output, not a transcription anyone checked: the
+    passage carries that warning, and the crop stays on disk for review.
+    Refused rasters never become passages.
+    """
+    chunks = [
+        chunk for chunk in index.get("chunks", [])
+        if chunk.get("extraction_method") != "table_ocr"
+    ]
+    accepted = [
+        dict(record) for record in report.get("tables", [])
+        if record.get("status") == "accepted" and record.get("cells")
+    ]
+    compounds = index.setdefault("compounds", {})
+    for record in accepted:
+        body = table_rows_to_text(record["cells"])
+        names = []
+        if resolver is not None:
+            for name in candidate_names(body, vocab=resolver.lexicon):
+                if name not in compounds:
+                    smiles = resolver.resolve(name)
+                    full_key, block = to_inchikey(smiles)
+                    if not block:
+                        continue
+                    compounds[name] = {
+                        "smiles": smiles, "inchikey": full_key, "block": block,
+                    }
+                names.append(name)
+        chunks.append(
+            {
+                "source_doc": record["filename"],
+                "page_number": record["page"],
+                "text": (
+                    "Table recovered by OCR from an image-only page. "
+                    "Cell values are machine-read; check the retained crop "
+                    "before quoting a number.\n" + body
+                ),
+                "extraction_method": "table_ocr",
+                "compounds": sorted(set(names)),
+                "blocks": sorted({compounds[n]["block"] for n in names}),
+                "table_ocr_id": record["id"],
+            }
+        )
+    if resolver is not None:
+        resolver.save()
+    index["chunks"] = chunks
+    index["image_tables"] = accepted
+    index["table_ocr_candidates"] = [
+        dict(record) for record in report.get("tables", [])
+        if record.get("status") != "skipped"
+    ]
+    index["table_ocr"] = {
+        key: report.get(key)
+        for key in (
+            "classifier", "confidence_threshold", "min_rows", "min_cols",
+            "min_fill_fraction", "column_gap_scale", "column_support_fraction",
+            "tesseract_version", "counts",
+        )
+    }
+    return index
+
+
 def image_structures_for_block(index, block):
     """Return accepted, reviewable image recognitions for one connectivity key."""
     if not block:

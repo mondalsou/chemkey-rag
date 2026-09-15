@@ -15,3 +15,4 @@ data/extracted_images/
 data/extracted_structures/
 data/ocr_demo/
 .venv-ocsr/
+data/extracted_tables/
