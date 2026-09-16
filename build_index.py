@@ -18,6 +18,14 @@ def main():
     parser.add_argument("--offline", action="store_true",
                         help="use the shipped lexicon only, never call PubChem")
     parser.add_argument("--max-candidates", type=int, default=500)
+    parser.add_argument(
+        "--ocr", choices=("auto", "force", "off"), default="auto",
+        help="OCR sparse pages automatically, every page, or no pages (default: auto)",
+    )
+    parser.add_argument("--ocr-language", default="eng",
+                        help="Tesseract language code (default: eng)")
+    parser.add_argument("--ocr-dpi", type=int, default=300,
+                        help="render resolution for OCR (default: 300)")
     args = parser.parse_args()
 
     pdf_paths = sorted(glob.glob(os.path.join(args.papers, "*.pdf")))
@@ -28,13 +36,18 @@ def main():
 
     print(f"Reading {len(pdf_paths)} PDFs")
     resolver = ck.NameResolver(online=not args.offline)
-    index = ck.build_index(pdf_paths, resolver, max_candidates=args.max_candidates)
+    index = ck.build_index(
+        pdf_paths, resolver, max_candidates=args.max_candidates,
+        ocr=args.ocr, ocr_language=args.ocr_language, ocr_dpi=args.ocr_dpi,
+    )
     ck.save_index(index, args.out)
 
     annotated = sum(1 for chunk in index["chunks"] if chunk["blocks"])
     print(f"\nWrote {args.out}")
     print(f"  {len(index['chunks'])} chunks, {annotated} carry at least one structure")
     print(f"  {len(index['compounds'])} names resolved")
+    ocr_chunks = sum(chunk.get("extraction_method") == "ocr" for chunk in index["chunks"])
+    print(f"  {ocr_chunks} chunks came from OCR")
 
     skeletons = {}
     for name, record in index["compounds"].items():

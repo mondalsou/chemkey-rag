@@ -56,7 +56,8 @@ query ---+-- text      -> BM25 over chunk text
                             +-- LLM composes a cited answer over retrieved spans only
 ```
 
-1. **Extract** — `pypdf` reads pages, text is split into ~180-word overlapping windows
+1. **Extract** — `pypdf` reads digital text; sparse/image-only pages fall back to
+   Tesseract OCR at 300 DPI, then text is split into ~180-word overlapping windows
 2. **Detect** — a lexical pass proposes candidate chemical names. It is deliberately
    dumb: suffix rules (`-amide`, `-ine`, `-ol`, `-oic acid`), locant patterns
    (`1,3,7-`, `N-(`), and a chemical-morpheme rule that catches drug names a suffix
@@ -109,6 +110,17 @@ Download the three papers listed in [`papers/PAPERS.md`](papers/PAPERS.md) into
 ```bash
 python build_index.py --offline     # lexicon only, no network
 streamlit run streamlit_app.py
+```
+
+OCR is automatic during indexing. The dedicated Conda environment includes it.
+If you use pip, install the Python adapters with
+`pip install -r requirements-ocr.txt` and install the Tesseract executable
+separately (for example, `brew install tesseract` on macOS). Useful controls:
+
+```bash
+python build_index.py --offline --ocr auto   # sparse pages only (default)
+python build_index.py --offline --ocr force  # OCR every page
+python build_index.py --offline --ocr off    # embedded PDF text only
 ```
 
 For a written answer, add an OpenRouter key:
@@ -165,6 +177,10 @@ extraction from schemes and figures, which is where most of the chemistry in a
 paper actually lives. Tautomer canonicalisation policy, versioned — changing it
 re-partitions the whole index. And provenance on every resolution, so a bad link
 can be traced and retracted rather than silently corrected.
+
+**OCR boundary.** OCR recovers printed text from scans and figure labels; it does
+not understand a drawn molecular structure. Structure diagrams still need a
+specialized optical chemical-structure recognizer such as DECIMER or MolScribe.
 
 **What it deliberately does not do.** It does not generate structures, and it
 does not let the model assert an identifier. A generated CAS Registry Number that

@@ -11,6 +11,10 @@ dependencies:
 
   # PDF + retrieval
   - pypdf>=5.0
+  # OCR fallback for scanned/image-only PDF pages
+  - pymupdf>=1.24
+  - pytesseract>=0.3.13
+  - tesseract>=5.0
   - requests>=2.31
   - python-dotenv>=1.0
 

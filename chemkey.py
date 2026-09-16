@@ -17,6 +17,7 @@ import math
 import os
 import re
 import time
+import warnings
 from itertools import zip_longest
 from urllib.parse import quote
 
@@ -51,14 +52,78 @@ def repair_page_text(text):
     return _LINEBREAK_HYPHEN_RE.sub(r"\1\2", text.translate(_UNICODE_HYPHENS))
 
 
-def extract_pdf_chunks(pdf_path, chunk_words=180, overlap_words=40):
-    """Split a PDF into overlapping word windows, one record per window."""
+def _needs_ocr(text, min_native_chars=40):
+    """Return True when a page has too little useful embedded text."""
+    return len(re.findall(r"[A-Za-z0-9]", text or "")) < min_native_chars
+
+
+def _ocr_pdf_page(pdf_path, page_index, language="eng", dpi=300):
+    """Render and OCR one zero-based PDF page using optional dependencies."""
+    try:
+        from io import BytesIO
+
+        import fitz  # PyMuPDF
+        import pytesseract
+        from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError(
+            "OCR needs the optional packages PyMuPDF and pytesseract. "
+            "Install them with `pip install -r requirements-ocr.txt`."
+        ) from exc
+
+    try:
+        with fitz.open(pdf_path) as document:
+            page = document.load_page(page_index)
+            scale = dpi / 72
+            pixmap = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
+            image = pixmap.tobytes("png")
+        return pytesseract.image_to_string(Image.open(BytesIO(image)), lang=language)
+    except pytesseract.TesseractNotFoundError as exc:
+        raise RuntimeError(
+            "The Tesseract OCR executable was not found. Install Tesseract "
+            "and ensure `tesseract` is on PATH."
+        ) from exc
+
+
+def extract_pdf_chunks(pdf_path, chunk_words=180, overlap_words=40,
+                       ocr="auto", ocr_language="eng", ocr_dpi=300):
+    """Split a PDF into overlapping word windows, OCRing scanned pages.
+
+    ``ocr`` is ``auto`` (OCR pages with sparse native text), ``force`` (OCR
+    every page), or ``off``. Native text remains preferred in auto mode because
+    it is faster and normally more accurate than OCR.
+    """
+    if ocr not in {"auto", "force", "off"}:
+        raise ValueError("ocr must be 'auto', 'force', or 'off'")
     reader = PdfReader(pdf_path)
     doc_name = os.path.basename(pdf_path)
     chunks = []
 
     for page_index, page in enumerate(reader.pages, start=1):
-        words = repair_page_text(page.extract_text() or "").split()
+        native_text = page.extract_text() or ""
+        use_ocr = ocr == "force" or (ocr == "auto" and _needs_ocr(native_text))
+        if use_ocr:
+            try:
+                text = _ocr_pdf_page(
+                    pdf_path, page_index - 1, language=ocr_language, dpi=ocr_dpi
+                )
+                extraction_method = "ocr"
+            except RuntimeError:
+                if ocr == "force":
+                    raise
+                warnings.warn(
+                    "OCR is unavailable; sparse pages will use embedded text only. "
+                    "Install requirements-ocr.txt and Tesseract to enable it.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                text = native_text
+                extraction_method = "native"
+        else:
+            text = native_text
+            extraction_method = "native"
+
+        words = repair_page_text(text).split()
         if not words:
             continue
 
@@ -69,6 +134,7 @@ def extract_pdf_chunks(pdf_path, chunk_words=180, overlap_words=40):
                 {
                     "source_doc": doc_name,
                     "page_number": page_index,
+                    "extraction_method": extraction_method,
                     "text": " ".join(words[start:end]),
                 }
             )
@@ -310,11 +376,14 @@ def to_inchikey(smiles):
 # 5. Index build
 # --------------------------------------------------------------------------
 
-def build_index(pdf_paths, resolver, max_candidates=500, verbose=True):
+def build_index(pdf_paths, resolver, max_candidates=500, verbose=True,
+                ocr="auto", ocr_language="eng", ocr_dpi=300):
     """Build the searchable index: chunks annotated with InChIKey skeletons."""
     chunks = []
     for path in pdf_paths:
-        page_chunks = extract_pdf_chunks(path)
+        page_chunks = extract_pdf_chunks(
+            path, ocr=ocr, ocr_language=ocr_language, ocr_dpi=ocr_dpi
+        )
         chunks.extend(page_chunks)
         if verbose:
             print(f"  {os.path.basename(path)}: {len(page_chunks)} chunks")
