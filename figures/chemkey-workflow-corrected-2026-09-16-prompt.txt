@@ -1,0 +1,22 @@
+Redraw the attached scientific workflow image as a finished correct slide figure, retaining its attractive pale blue/teal/green/violet/amber rounded panels, white background, colourful thin vector scientific icons, large legible condensed sans-serif labels. Wide 16:9 high resolution. No overall title. This is a corrected redraw, not a discussion or prompt. Simplify text about 10%. Preserve two horizontal rows and the bold red PDF icon, one database, table illustrations, matching tags, ranked source cards and answer network.
+
+CRITICAL GRAPH GEOMETRY: Top row left to right: Scientific PDFs -> Extract the evidence -> Validate and link -> Structure-aware index. Bottom row left to right: 1 Molecule + question -> 2 Query connectivity key -> 3 Exact connectivity match -> 4 Rank matched evidence -> 5 Cited answer. The ONLY connector between rows MUST ORIGINATE ON THE BOTTOM EDGE OF THE DATABASE CYLINDER at the UPPER RIGHT, descend into the WHITE GUTTER, travel LEFT in the gutter, then turn DOWN into the TOP EDGE of bottom step 3. Label this elbow connector "Indexed keys + evidence". Make its origin unmistakably touch the cylinder. No line descends from validation! Leave pure blank white space below the validation panel. No top-to-bottom link to step 4 or 5. Use orthogonal elbow connector without crossing any object. Do not put arrowheads on its intermediate bends, only at step 3.
+
+TOP details:
+Scientific PDFs: big stack with red PDF badge, text lines, small grid, simple molecular icon.
+Extract the evidence: 3 compact lanes:
+"Text" / "pypdf • Tesseract fallback" -> blue passage cards
+"Tables" / "Tesseract + layout recovery" -> orange grid with an empty cell
+"Structures" / "DECIMER + RDKit" -> green molecular drawing.
+Use a simple chemically correct benzene skeleton with alternating bonds and a single OH substituent (phenol) consistently wherever a molecule is shown, including PDF, structure image, recognised output, query, and evidence. Optical recognition must preserve precisely the same atoms and bonds. No transformation into a different molecule. No complex random chemical formulas.
+Three lane outputs enter "Validate and link". In that panel show green shield and text "Checks + entity linking", small subtitle "Names / structures → connectivity keys", acceptance arrow to index. Small red terminal review tray labelled "Excluded from search" and "Crops + raw output retained". The tray terminates WITHIN panel, no external arrow. Avoid "high confidence", "discard", or implying every valid molecule is correct recognition.
+Index: one clean green cylinder. Three heterogeneous records, each with an evidence icon, connectivity tag and source icon: blue passage row, orange table row, green structure crop row. Short headers "Evidence", "Connectivity key", "Source". Do not imply that every record has all data types. No invented keys/page numbers.
+
+BOTTOM:
+Step1 panel split internally: molecule sketch above labelled "Name or SMILES"; question bubble below labelled "Question". Molecule feeds step2 horizontally. The question has its own thin BLUE connector exiting bubble along the very bottom margin beneath steps2/3 and turning UP into step4, labelled "Question terms". This is distinct from green main path.
+Step2: tag labelled "Connectivity key", subtitle "RDKit normalisation".
+Step3: tags "Query key" and "Index key" with equality and check, subtitle "Select associated evidence". Indexed key arrow from top cylinder terminates here.
+Step4: three ranked passage/table source cards, label "BM25", subtitle "Within matched evidence".
+Step5: purple connected-node LLM icon explicitly labelled "LLM", down arrow to amber answer bubble with only neutral horizontal lines and "[Source 1] [Source 2]". Subtitle "Evidence only • refuse if insufficient". No invented catalyst/temperature/yield or numerical claims.
+
+Only arrows: PDFs to extraction; three extraction outputs to validation; validation accepted to index; index via gutter to match; query molecule to key; key to match; match to rank; question via bottom margin to rank; rank to LLM to cited answer. Do not add connectors. All arrowheads visible. Database must not feed cited answer. No connector from refused records to query. Small 'SEARCH THE INDEX' row label may appear at left in gutter, away from elbow line. Preserve original visual appeal, readable texts and spacious layout, scientific vector illustration, no heavy gradients or fake scientific numbers.
